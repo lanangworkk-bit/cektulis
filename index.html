@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CekTulis — Periksa Pola Tulisan AI dan Kemiripan Sumber</title>
+<meta name="description" content="Alat bantu mahasiswa untuk memeriksa pola tulisan AI dan kemiripan dengan literatur terbuka. Tempel teks atau unggah DOCX/PDF. Berjalan di browser, tanpa akun.">
+<meta name="theme-color" content="#f6f4ee">
+<meta property="og:title" content="CekTulis — Periksa Tulisan Sebelum Dikumpulkan">
+<meta property="og:description" content="Tandai pola tulisan AI, bandingkan dengan literatur terbuka, dan dapatkan saran revisi. Bukan vonis, tapi bahan pertimbangan.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f5c4e'/%3E%3Cpath d='M18 34l9 9 19-22' fill='none' stroke='%23fffdf8' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#f6f4ee;
+    --paper-2:#eeeae0;
+    --card:#fffdf8;
+    --ink:#171614;
+    --muted:#6b675f;
+    --muted-2:#938d82;
+    --line:#ded8cb;
+    --line-strong:#c8c0b0;
+    --teal:#0f5c4e;
+    --teal-deep:#0a4339;
+    --teal-soft:#e2f0ea;
+    --green:#2f6b45;
+    --green-soft:#e4f0e7;
+    --amber:#a86412;
+    --amber-soft:#fbefd8;
+    --red:#a33a2f;
+    --red-soft:#f8e4e0;
+    --shadow:0 1px 2px rgba(23,22,20,.04), 0 18px 44px rgba(23,22,20,.06);
+    --r:16px;
+    --wrap:1120px;
+    --sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --serif:"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  img,svg{display:block;max-width:100%}
+  button,input,textarea{font:inherit;color:inherit}
+  a{color:inherit}
+  ::selection{background:var(--teal);color:#fff}
+  .wrap{width:min(var(--wrap),calc(100% - 40px));margin:0 auto}
+  .hidden{display:none!important}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  section[id],div[id]{scroll-margin-top:88px}
+
+  /* topbar */
+  .topbar{position:sticky;top:0;z-index:60;background:rgba(246,244,238,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .topbar-in{height:66px;display:flex;align-items:center;gap:24px}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:0 0 auto}
+  .brand .logo{width:34px;height:34px;border-radius:9px;background:var(--teal);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .brand .logo svg{width:19px;height:19px}
+  .brand b{display:block;font-family:var(--serif);font-size:19px;line-height:1;letter-spacing:-.02em;font-weight:600}
+  .brand small{display:block;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2);margin-top:5px}
+  .nav{display:flex;align-items:center;gap:22px;margin-left:auto;font-size:12px;font-weight:600}
+  .nav a{text-decoration:none;color:var(--muted);border-bottom:1px solid transparent;padding:4px 0;transition:.15s}
+  .nav a:hover{color:var(--ink);border-color:var(--ink)}
+  .nav .repo{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);border-radius:999px;padding:8px 13px;color:var(--ink);background:var(--card)}
+  .nav .repo:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+  .nav .repo svg{width:14px;height:14px}
+
+  /* hero */
+  .hero{padding:clamp(44px,6vw,86px) 0 clamp(38px,5vw,64px);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;width:560px;height:560px;right:-180px;top:-260px;border-radius:50%;background:radial-gradient(circle,rgba(15,92,78,.07),transparent 68%);pointer-events:none}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1.03fr) minmax(0,.97fr);gap:clamp(30px,5vw,72px);align-items:center;position:relative}
+  .hero h1{font-family:var(--serif);font-size:clamp(42px,6vw,78px);line-height:.98;letter-spacing:-.035em;margin:18px 0 0;font-weight:600}
+  .hero h1 em{font-style:italic;color:var(--teal)}
+  .hero .lead{font-size:clamp(15px,1.45vw,17px);line-height:1.65;color:var(--muted);max-width:560px;margin:24px 0 0}
+  .hero .lead b{color:var(--ink);font-weight:600}
+  .hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+  .trust{display:flex;flex-wrap:wrap;gap:16px;list-style:none;padding:0;margin:26px 0 0;font-size:11px;color:var(--muted)}
+  .trust li{display:inline-flex;align-items:center;gap:7px}
+  .trust li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--teal);opacity:.8}
+
+  /* hero preview */
+  .hero-preview{position:relative}
+  .preview-card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px;transform:rotate(.6deg);transition:transform .4s ease}
+  .hero-preview:hover .preview-card{transform:rotate(0deg) translateY(-3px)}
+  .preview-top{display:flex;align-items:center;justify-content:space-between;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+  .live{display:inline-flex;align-items:center;gap:6px;color:var(--teal)}
+  .live i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(47,107,69,.12)}
+  .preview-body{display:flex;align-items:center;gap:16px;padding:18px 0 16px;border-bottom:1px solid var(--line)}
+  .mini-ring{--p:38;--ring:var(--amber);width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--ring) calc(var(--p) * 1%), var(--paper-2) 0);display:grid;place-items:center;position:relative;flex:0 0 auto}
+  .mini-ring::before{content:"";position:absolute;inset:6px;background:var(--card);border-radius:50%}
+  .mini-ring b{position:relative;font-family:var(--serif);font-size:18px;line-height:1}
+  .preview-body h3{font-family:var(--serif);font-size:18px;line-height:1.15;margin:7px 0 0;font-weight:600}
+  .preview-lines{padding:16px 0 4px;font-family:var(--serif);font-size:13.5px;line-height:1.82;color:#3b3832}
+  .preview-lines p{margin:0 0 9px}
+  .hl{border-radius:4px;padding:1px 3px;box-decoration-break:clone}
+  .hl.high{background:var(--red-soft);box-shadow:inset 0 -2px 0 rgba(163,58,47,.3)}
+  .hl.mid{background:var(--amber-soft);box-shadow:inset 0 -2px 0 rgba(168,100,18,.24)}
+  .preview-foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:14px;border-top:1px solid var(--line);font-size:9.5px;color:var(--muted)}
+  .preview-foot span{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
+
+  /* sections */
+  .section{padding:clamp(44px,6vw,76px) 0}
+  .section-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;margin-bottom:22px}
+  .section-head h2{font-family:var(--serif);font-size:clamp(30px,4vw,46px);line-height:1.04;letter-spacing:-.025em;margin:10px 0 0;font-weight:600}
+  .section-head p{font-size:13.5px;line-height:1.62;color:var(--muted);max-width:620px;margin:10px 0 0}
+  .section-note{font:700 9px/1.3 var(--sans);letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);white-space:nowrap;padding-bottom:4px;text-align:right}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font:700 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:999px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);font-size:12.5px;font-weight:700;line-height:1;text-decoration:none;cursor:pointer;transition:transform .15s,border-color .15s,background .15s,color .15s;white-space:nowrap}
+  .btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn:focus-visible{outline:3px solid rgba(15,92,78,.22);outline-offset:2px}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn.primary:hover{background:var(--teal-deep);border-color:var(--teal-deep)}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  .btn.ghost:hover{color:var(--ink);background:var(--paper-2)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn.small{height:34px;padding:0 13px;font-size:11px}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:18px;line-height:1;color:var(--muted)}
+  .icon-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+
+  /* checker */
+  .checker-card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  .checker-tabs{display:flex;gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line);background:var(--paper)}
+  .tab{appearance:none;border:0;background:transparent;padding:12px 16px 13px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--teal);border-color:var(--teal)}
+  .pane{position:relative}
+  .editor{display:block;width:100%;min-height:230px;max-height:460px;resize:vertical;border:0;outline:0;background:transparent;padding:22px 24px;font-family:var(--serif);font-size:16px;line-height:1.72;color:var(--ink)}
+  .editor::placeholder{color:#a6a095;font-family:var(--sans);font-size:14px;line-height:1.7}
+  .editor-foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;padding:11px 24px;border-top:1px solid var(--line);font-size:10px;color:var(--muted-2);background:#fffefa}
+  .file-area{padding:18px}
+  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:190px;padding:28px;border:1.5px dashed var(--line-strong);border-radius:14px;background:#fffefa;text-align:center;cursor:pointer;transition:.15s}
+  .dropzone:hover,.dropzone.drag{border-color:var(--teal);background:var(--teal-soft)}
+  .dropzone:focus-visible{outline:3px solid rgba(15,92,78,.2);outline-offset:2px}
+  .dropzone svg{width:32px;height:32px;color:var(--teal);margin-bottom:4px}
+  .dropzone b{font-size:14px}
+  .dropzone span{font-size:11.5px;color:var(--muted);max-width:420px;line-height:1.55}
+  .file-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fffefa}
+  .file-row + .file-row{margin-top:8px}
+  .file-badge{width:38px;height:38px;border-radius:9px;background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;font:800 10px/1 var(--mono);flex:0 0 auto;text-transform:uppercase}
+  .file-info{min-width:0;flex:1}
+  .file-info b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-info span{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
+  .checker-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 18px;border-top:1px solid var(--line);background:var(--paper)}
+  .privacy{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:10px;color:var(--muted-2)}
+  .privacy svg{width:12px;height:12px}
+  .checker-status{display:none;margin:0 18px 16px;padding:10px 13px;border-radius:9px;font-size:11.5px;line-height:1.5}
+  .checker-status.show{display:block}
+  .checker-status.error{background:var(--red-soft);color:var(--red);border:1px solid #ecc9c4}
+  .checker-status.ok{background:var(--green-soft);color:var(--green);border:1px solid #c9e0d0}
+
+  /* report */
+  .report-section{padding-top:clamp(36px,5vw,60px)}
+  .report-top{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,.68fr);gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+  .score-card{display:flex;align-items:center;gap:clamp(18px,3vw,30px);padding:clamp(20px,3vw,28px)}
+  .score-ring{--p:0;--ring:var(--teal);width:clamp(112px,13vw,138px);height:clamp(112px,13vw,138px);border-radius:50%;background:conic-gradient(var(--ring) calc(var(--p) * 1%), var(--paper-2) 0);display:grid;place-items:center;position:relative;flex:0 0 auto}
+  .score-ring::before{content:"";position:absolute;inset:9px;background:var(--card);border-radius:50%}
+  .score-ring > div{position:relative;text-align:center}
+  .score-ring b{display:block;font-family:var(--serif);font-size:clamp(34px,4vw,46px);line-height:.9;letter-spacing:-.03em;font-weight:600}
+  .score-ring span{display:block;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);margin-top:6px}
+  .score-copy{min-width:0}
+  .score-copy h3{font-family:var(--serif);font-size:clamp(20px,2.5vw,27px);line-height:1.1;letter-spacing:-.02em;margin:9px 0 0;font-weight:600}
+  .score-copy p{font-size:12.5px;line-height:1.6;color:var(--muted);margin:8px 0 0;max-width:440px}
+  .score-copy .confidence{font-size:10.5px;color:var(--muted-2);border-top:1px solid var(--line);padding-top:9px;margin-top:12px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font:800 9px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase}
+  .badge.low{background:var(--green-soft);color:var(--green)}
+  .badge.mid{background:var(--amber-soft);color:var(--amber)}
+  .badge.high{background:var(--red-soft);color:var(--red)}
+  .badge.neutral{background:var(--paper-2);color:var(--muted)}
+  .stats-card{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);overflow:hidden}
+  .stat{background:var(--card);padding:18px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+  .stat b{font-family:var(--serif);font-size:clamp(24px,2.6vw,31px);line-height:1;letter-spacing:-.02em;font-weight:600}
+  .stat span{font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2)}
+  .signals-card,.heatmap-card,.sim-card,.compare-card,.advice-card{margin-top:14px;padding:clamp(20px,3vw,28px)}
+  .card-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+  .card-head h3{font-family:var(--serif);font-size:clamp(20px,2.2vw,25px);line-height:1.1;letter-spacing:-.02em;margin:0;font-weight:600}
+  .card-head p{font-size:11.5px;line-height:1.55;color:var(--muted);margin:6px 0 0;max-width:640px}
+  .chip{display:inline-flex;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font:700 9px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;background:var(--paper)}
+  .signals-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .signal{padding:15px 16px;border:1px solid var(--line);border-radius:12px;background:#fffefa}
+  .signal-top{display:flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .dot.low{background:var(--green)}
+  .dot.mid{background:var(--amber)}
+  .dot.high{background:var(--red)}
+  .dot.neutral{background:var(--muted-2)}
+  .signal-top b{font-size:11.5px;line-height:1.3;font-weight:700}
+  .signal-value{margin-left:auto;font:700 10px/1 var(--mono);color:var(--muted);white-space:nowrap}
+  .signal p{font-size:10.5px;line-height:1.55;color:var(--muted);margin:7px 0 0}
+  .meter{height:4px;border-radius:99px;background:var(--paper-2);margin-top:11px;overflow:hidden}
+  .meter i{display:block;height:100%;border-radius:99px}
+  .meter i.low{background:var(--green)}
+  .meter i.mid{background:var(--amber)}
+  .meter i.high{background:var(--red)}
+  .meter i.neutral{background:var(--line-strong)}
+
+  .heatmap{font-family:var(--serif);font-size:15.5px;line-height:2.05;color:#302d28}
+  .sent{display:inline;padding:2px 4px;margin:0 1px;border-radius:5px;cursor:pointer;transition:background .15s,box-shadow .15s;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+  .sent:hover{box-shadow:0 0 0 1px var(--line-strong)}
+  .sent.risk-high{background:var(--red-soft);box-shadow:inset 0 -2px 0 rgba(163,58,47,.34)}
+  .sent.risk-mid{background:var(--amber-soft);box-shadow:inset 0 -2px 0 rgba(168,100,18,.26)}
+  .sent.risk-low{background:transparent}
+  .sent.active{background:#fff;box-shadow:0 0 0 2px var(--teal)}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:9.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:9px;height:9px;border-radius:3px}
+  .sent-detail{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:13px;background:var(--paper);animation:rise .2s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .sent-detail-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .sent-detail-top .icon-btn{margin-left:auto}
+  .sent-quote{font-family:var(--serif);font-size:14px;line-height:1.62;color:var(--ink);margin:0 0 12px;padding-left:12px;border-left:2px solid var(--line-strong)}
+  .sent-detail ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .sent-detail li{font-size:11.5px;line-height:1.5;color:var(--muted);padding-left:14px;position:relative}
+  .sent-detail li::before{content:"·";position:absolute;left:2px;color:var(--teal);font-weight:800}
+  .sent-tip{font-size:11.5px;line-height:1.55;color:var(--teal);margin:12px 0 0;padding-top:11px;border-top:1px solid var(--line)}
+
+  /* similarity */
+  .sim-status{font-size:11.5px;line-height:1.55;color:var(--muted);min-height:0}
+  .sim-status.error{color:var(--red)}
+  .sim-status.loading{color:var(--teal)}
+  .sim-list{display:flex;flex-direction:column}
+  .sim-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:15px 0;border-top:1px solid var(--line)}
+  .sim-item:first-child{border-top:0;padding-top:2px}
+  .sim-item h4{font-size:12.5px;line-height:1.45;margin:0;font-weight:700}
+  .sim-item h4 a{text-decoration:none;border-bottom:1px solid transparent}
+  .sim-item h4 a:hover{border-color:var(--teal);color:var(--teal)}
+  .sim-meta{font-size:10px;line-height:1.5;color:var(--muted);margin-top:4px}
+  .sim-side{text-align:right;min-width:76px}
+  .sim-pct{font-family:var(--serif);font-size:22px;line-height:1;font-weight:600}
+  .sim-label{display:block;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-top:4px}
+  .sim-bar{grid-column:1/-1;height:3px;border-radius:99px;background:var(--paper-2);overflow:hidden;margin-top:-4px}
+  .sim-bar i{display:block;height:100%;border-radius:99px;background:var(--teal)}
+  .sim-empty{padding:14px 0 2px;font-size:11.5px;line-height:1.6;color:var(--muted)}
+  .sim-note{font-size:10px;line-height:1.5;color:var(--muted-2);margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+
+  /* compare */
+  .file-inline{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;color:var(--teal);cursor:pointer;border:1px dashed var(--line-strong);border-radius:9px;padding:9px 12px;background:#fffefa}
+  .file-inline:hover{border-color:var(--teal);background:var(--teal-soft)}
+  .file-inline input{width:1px;height:1px;opacity:0;position:absolute;pointer-events:none}
+  .compare-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:16px 0 4px}
+  .compare-summary b{font-family:var(--serif);font-size:28px;line-height:1;font-weight:600}
+  .compare-summary span{font-size:11px;color:var(--muted)}
+  .pair{padding:12px 0;border-top:1px solid var(--line)}
+  .pair p{font-family:var(--serif);font-size:12px;line-height:1.55;margin:0 0 6px;color:#3b3832}
+  .pair p b{font-family:var(--sans);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);display:inline-block;min-width:20px}
+  .pair .pair-score{font:700 9px/1 var(--mono);color:var(--amber)}
+
+  /* advice */
+  .advice-card ol{list-style:none;counter-reset:advice;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+  .advice-card li{counter-increment:advice;display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--line);font-size:12px;line-height:1.6;color:#3b3832}
+  .advice-card li:first-child{border-top:0;padding-top:0}
+  .advice-card li::before{content:counter(advice,decimal-leading-zero);font:700 9px/1.7 var(--mono);color:var(--teal);flex:0 0 auto;min-width:20px}
+  .report-note{font-size:10.5px;line-height:1.6;color:var(--muted-2);margin:16px 0 0;padding:0 4px}
+
+  /* how */
+  .how-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;min-height:190px}
+  .step .n{font:700 10px/1 var(--mono);letter-spacing:.1em;color:var(--muted-2)}
+  .step h3{font-family:var(--serif);font-size:19px;line-height:1.12;letter-spacing:-.01em;margin:14px 0 0;font-weight:600}
+  .step p{font-size:11px;line-height:1.6;color:var(--muted);margin:8px 0 0}
+  .step .tag{margin-top:auto;padding-top:16px;font:700 8px/1 var(--sans);letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2)}
+
+  /* limits */
+  .limits-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .limit-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+  .limit-card.dark{background:var(--ink);color:#f2efe8;border-color:var(--ink)}
+  .limit-card h3{font-family:var(--serif);font-size:22px;line-height:1.1;margin:0;font-weight:600}
+  .limit-card p{font-size:11.5px;line-height:1.6;color:var(--muted);margin:8px 0 0}
+  .limit-card.dark p{color:#b9b4a9}
+  .limit-list{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .limit-list li{display:flex;gap:9px;font-size:11px;line-height:1.55;color:var(--muted)}
+  .limit-list li::before{content:"—";color:var(--line-strong);flex:0 0 auto}
+  .limit-card.dark .limit-list li{color:#d7d2c7}
+  .limit-card.dark .limit-list li::before{color:#6f6a60}
+
+  /* footer */
+  .footer{border-top:1px solid var(--line);padding:26px 0 40px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:10.5px;color:var(--muted)}
+  .footer b{font-weight:700;color:var(--ink)}
+  .footer .right{margin-left:auto;display:flex;flex-wrap:wrap;gap:16px}
+  .footer a{text-decoration:none;border-bottom:1px solid transparent}
+  .footer a:hover{border-color:var(--ink);color:var(--ink)}
+
+  @media (max-width:1080px){
+    .hero-grid{grid-template-columns:1fr}
+    .hero-preview{max-width:620px}
+    .preview-card{transform:none}
+    .report-top{grid-template-columns:1fr}
+    .stats-card{grid-template-columns:repeat(4,1fr)}
+    .how-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .nav a:not(.repo){display:none}
+  }
+  @media (max-width:760px){
+    .wrap{width:calc(100% - 32px)}
+    .section-head{grid-template-columns:minmax(0,1fr)}
+    .section-note{display:none;text-align:left}
+    .signals-grid{grid-template-columns:1fr}
+    .limits-grid{grid-template-columns:1fr}
+    .score-card{flex-direction:column;align-items:flex-start}
+    .score-ring{width:112px;height:112px}
+    .score-copy h3{font-size:23px}
+    .editor{padding:18px;font-size:15px}
+    .editor-foot{padding:10px 18px}
+    .checker-actions{padding:12px 14px}
+    .privacy{margin-left:0;width:100%;padding-top:4px}
+    .heatmap{font-size:14.5px;line-height:1.95}
+    .topbar-in{height:60px}
+    .brand small{display:none}
+    .nav{gap:10px}
+    .nav .repo{padding:7px 11px;font-size:10.5px}
+  }
+  @media (max-width:520px){
+    .hero h1{font-size:clamp(38px,11vw,50px)}
+    .hero .lead{font-size:14px}
+    .hero-actions .btn{flex:1 1 auto}
+    .stats-card{grid-template-columns:1fr 1fr}
+    .stat{padding:14px}
+    .how-grid{grid-template-columns:1fr}
+    .step{min-height:0}
+    .step .tag{padding-top:12px}
+    .checker-actions .btn{flex:1 1 auto}
+    .privacy{justify-content:center}
+    .sim-item{grid-template-columns:1fr}
+    .sim-side{text-align:left;display:flex;align-items:baseline;gap:8px;min-width:0}
+    .sim-label{display:inline;margin:0}
+    .preview-body{align-items:flex-start}
+    .preview-body h3{font-size:16px}
+    .footer .right{margin-left:0;width:100%}
+    .sent-detail{padding:14px}
+  }
+
+  @media print{
+    @page{margin:16mm}
+    body{background:#fff;font-size:11pt;color:#000}
+    .topbar,.hero,.checker-section,.how,.limits,.footer,.report-head .btn,.sim-card .btn,.compare-card,.report-note,.sent-detail{display:none!important}
+    .wrap{width:100%;max-width:none;padding:0}
+    .section{padding:0}
+    .report-section{padding:0}
+    .card{box-shadow:none;border-color:#ccc;break-inside:avoid;background:#fff}
+    .report-top{grid-template-columns:1fr 1fr;gap:8mm}
+    .score-card{flex-direction:row}
+    .score-ring{width:28mm;height:28mm}
+    .score-ring b{font-size:22pt}
+    .stats-card{grid-template-columns:1fr 1fr}
+    .signals-grid{grid-template-columns:1fr 1fr}
+    .heatmap{font-size:10.5pt;line-height:1.8}
+    .sent{box-decoration-break:clone}
+    .sim-item{break-inside:avoid}
+    .advice-card li{break-inside:avoid}
+    a{text-decoration:none;color:#000}
+  }
+</style>
+</head>
+<body id="top">
+<a class="sr-only" href="#cek">Lompat ke pemeriksa</a>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="#top" aria-label="CekTulis, ke atas">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 6.8" stroke="#fffdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span><b>CekTulis</b><small>alat bantu mahasiswa</small></span>
+    </a>
+    <nav class="nav" aria-label="Navigasi utama">
+      <a href="#cek">Cek tulisan</a>
+      <a href="#cara">Cara kerja</a>
+      <a href="#batas">Batasan</a>
+      <a class="repo" href="https://github.com/lanangworkk-bit/cektulis" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.54 2.87 8.39 6.84 9.75.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.2-3.37-1.2-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.86.09-.66.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/></svg>
+        Repo
+      </a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><i></i> Alat bantu mahasiswa</span>
+      <h1>Periksa tulisanmu <em>sebelum</em> dosen membacanya.</h1>
+      <p class="lead">CekTulis menandai pola yang sering muncul pada teks AI, lalu membandingkan kata kuncimu dengan literatur terbuka. Hasilnya <b>bahan pertimbangan</b>, bukan vonis.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#cek">Mulai periksa</a>
+        <a class="btn ghost" href="#cara">Lihat cara kerja</a>
+      </div>
+      <ul class="trust">
+        <li>Berjalan di browser</li>
+        <li>Tidak menyimpan teks</li>
+        <li>Tanpa akun</li>
+      </ul>
+    </div>
+    <aside class="hero-preview" aria-label="Contoh laporan pemeriksaan">
+      <div class="preview-card">
+        <div class="preview-top">
+          <span>Laporan contoh</span>
+          <span class="live"><i></i> Diproses lokal</span>
+        </div>
+        <div class="preview-body">
+          <div class="mini-ring" aria-hidden="true"><b>38</b></div>
+          <div>
+            <span class="badge mid">Sedang</span>
+            <h3>Beberapa pola perlu dilihat.</h3>
+          </div>
+        </div>
+        <div class="preview-lines">
+          <p><span class="hl high">Di era digital saat ini,</span> teknologi memainkan peran yang krusial dalam lanskap pendidikan.</p>
+          <p><span class="hl mid">Selain itu,</span> platform pembelajaran yang inovatif menampilkan pengalaman belajar yang mulus dan komprehensif.</p>
+          <p>Dosen lalu meminta mahasiswa membawa satu artikel jurnal dan menandai bagian metodenya.</p>
+        </div>
+        <div class="preview-foot">
+          <span>3 sinyal</span>
+          <span>2 sumber mirip</span>
+          <span>214 kata</span>
+          <span>1 menit baca</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<main>
+  <section class="section checker-section" id="cek">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow"><i></i> 01 · Pemeriksaan</span>
+          <h2>Tempel atau unggah tulisanmu</h2>
+          <p>Minimal sekitar 80 kata supaya sinyalnya terbaca. Untuk file, CekTulis membaca DOCX, PDF, TXT, dan Markdown langsung di browser.</p>
+        </div>
+        <div class="section-note">DOCX · PDF · TXT<br>Maks. 10 MB</div>
+      </div>
+
+      <div class="checker-card">
+        <div class="checker-tabs" role="tablist" aria-label="Cara memasukkan teks">
+          <button class="tab active" id="tab-paste" role="tab" aria-selected="true" aria-controls="pane-paste" type="button">Tempel teks</button>
+          <button class="tab" id="tab-upload" role="tab" aria-selected="false" aria-controls="pane-upload" type="button" tabindex="-1">Upload file</button>
+        </div>
+
+        <div class="pane" id="pane-paste" role="tabpanel" aria-labelledby="tab-paste">
+          <label class="sr-only" for="draft">Draf tulisan yang diperiksa</label>
+          <textarea class="editor" id="draft" spellcheck="false" placeholder="Tempel paragraf atau bab di sini. Contoh: Di era digital saat ini, teknologi memainkan peran yang krusial..."></textarea>
+          <div class="editor-foot">
+            <span id="count">0 kata · 0 kalimat</span>
+            <span>Maks. 50.000 karakter</span>
+          </div>
+        </div>
+
+        <div class="pane hidden" id="pane-upload" role="tabpanel" aria-labelledby="tab-upload">
+          <div class="file-area">
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Pilih atau letakkan file">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <b>Letakkan file di sini</b>
+              <span>atau klik untuk memilih. DOCX, PDF, TXT, atau MD. Maksimal 10 MB.</span>
+              <input type="file" id="file-input" accept=".docx,.pdf,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown" hidden>
+            </div>
+            <div class="file-row hidden" id="file-row">
+              <span class="file-badge" id="file-badge">FILE</span>
+              <div class="file-info">
+                <b id="file-name">—</b>
+                <span id="file-meta">—</span>
+              </div>
+              <button class="icon-btn" id="file-remove" type="button" aria-label="Hapus file">×</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="checker-status" id="checker-status" role="status"></div>
+
+        <div class="checker-actions">
+          <button class="btn primary" id="analyze" type="button">Periksa tulisan</button>
+          <button class="btn" id="sample" type="button">Muat contoh</button>
+          <button class="btn ghost" id="clear" type="button">Bersihkan</button>
+          <span class="privacy">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            Teks penuh tidak dikirim
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section report-section hidden" id="hasil" aria-live="polite">
+    <div class="wrap">
+      <div class="section-head report-head">
+        <div>
+          <span class="eyebrow"><i></i> 02 · Laporan</span>
+          <h2>Hasil pemeriksaan</h2>
+          <p id="report-meta">—</p>
+        </div>
+        <button class="btn" id="print" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Ekspor PDF
+        </button>
+      </div>
+
+      <div class="report-top">
+        <div class="card score-card">
+          <div class="score-ring" id="score-ring" style="--p:0">
+            <div><b id="score-num">0</b><span>dari 100</span></div>
+          </div>
+          <div class="score-copy">
+            <span class="badge neutral" id="band-badge">Menunggu</span>
+            <h3 id="verdict">Belum ada teks.</h3>
+            <p id="verdict-sub">Tempel draf atau unggah file untuk mulai memeriksa.</p>
+            <p class="confidence" id="confidence">—</p>
+          </div>
+        </div>
+        <div class="card stats-card">
+          <div class="stat"><b id="stat-words">0</b><span>kata</span></div>
+          <div class="stat"><b id="stat-sentences">0</b><span>kalimat</span></div>
+          <div class="stat"><b id="stat-paragraphs">0</b><span>paragraf</span></div>
+          <div class="stat"><b id="stat-read">0</b><span>menit baca</span></div>
+        </div>
+      </div>
+
+      <div class="card signals-card">
+        <div class="card-head">
+          <div>
+            <h3>Sinyal yang terbaca</h3>
+            <p>Setiap sinyal menunjukkan satu ciri, bukan kesimpulan. Sinyal hijau berarti cirinya tidak menonjol, bukan berarti teks pasti manusia.</p>
+          </div>
+          <span class="chip" id="signal-count">0 sinyal</span>
+        </div>
+        <div class="signals-grid" id="signals"></div>
+      </div>
+
+      <div class="card heatmap-card">
+        <div class="card-head">
+          <div>
+            <h3>Peta kalimat</h3>
+            <p>Klik kalimat untuk melihat alasan di balik tandanya. Kalimat tanpa tanda tetap perlu dibaca.</p>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span><i style="background:var(--red-soft);box-shadow:inset 0 -2px 0 rgba(163,58,47,.34)"></i>Tinggi</span>
+            <span><i style="background:var(--amber-soft);box-shadow:inset 0 -2px 0 rgba(168,100,18,.26)"></i>Sedang</span>
+            <span><i style="background:var(--paper-2)"></i>Rendah</span>
+          </div>
+        </div>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="sent-detail hidden" id="sent-detail"></div>
+      </div>
+
+      <div class="card sim-card">
+        <div class="card-head">
+          <div>
+            <h3>Kemiripan dengan literatur terbuka</h3>
+            <p>CekTulis mengambil kata kunci dari tulisanmu, lalu mencarinya di Crossref. Hanya kata kunci yang dikirim, dan hanya saat kamu menekan tombol. Ini bukan database plagiarisme kampus.</p>
+          </div>
+          <button class="btn" id="sim-btn" type="button">Cek kemiripan</button>
+        </div>
+        <div class="sim-status" id="sim-status" role="status"></div>
+        <div class="sim-list" id="sim-list"></div>
+        <p class="sim-note">Kemiripan leksikal dihitung dari kata yang sama, bukan makna. Selalu buka sumber aslinya sebelum menyimpulkan.</p>
+      </div>
+
+      <div class="card compare-card">
+        <div class="card-head">
+          <div>
+            <h3>Bandingkan dengan dokumen lain</h3>
+            <p>Unggah draf teman, versi lama, atau file pembanding. Semua dihitung di browser dan tidak dikirim ke mana pun.</p>
+          </div>
+        </div>
+        <label class="file-inline">
+          <input type="file" id="compare-input" accept=".docx,.pdf,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown">
+          Pilih file pembanding
+        </label>
+        <div class="sim-status" id="compare-status" role="status"></div>
+        <div class="compare-list" id="compare-list"></div>
+      </div>
+
+      <div class="card advice-card">
+        <div class="card-head">
+          <div>
+            <h3>Saran revisi</h3>
+            <p>Diurutkan dari yang paling mungkin memperbaiki tulisanmu, bukan dari yang paling menaikkan skor.</p>
+          </div>
+        </div>
+        <ol id="advice"></ol>
+      </div>
+
+      <p class="report-note">Skor ini bukan probabilitas AI dan tidak bisa membuktikan siapa penulisnya. Gunakan untuk memperbaiki tulisan, bukan untuk menuduh orang lain.</p>
+    </div>
+  </section>
+
+  <section class="section how" id="cara">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow"><i></i> 03 · Cara kerja</span>
+          <h2>Empat langkah, tanpa kotak hitam</h2>
+          <p>CekTulis tidak mengirim seluruh teks ke server. Pemeriksaan pola berjalan di browser; pencarian literatur baru aktif saat kamu memintanya.</p>
+        </div>
+        <div class="section-note">Lokal dulu<br>literatur belakangan</div>
+      </div>
+      <div class="how-grid">
+        <div class="step">
+          <span class="n">01</span>
+          <h3>Baca</h3>
+          <p>Tempel teks atau unggah DOCX/PDF. File diurai di browser, termasuk paragraf dan kalimat.</p>
+          <span class="tag">Tanpa unggah</span>
+        </div>
+        <div class="step">
+          <span class="n">02</span>
+          <h3>Ukur</h3>
+          <p>Panjang kalimat, frasa generik, kata abstrak, pengulangan, dan keragaman kata dihitung.</p>
+          <span class="tag">Sinyal yang bisa dibaca</span>
+        </div>
+        <div class="step">
+          <span class="n">03</span>
+          <h3>Bandingkan</h3>
+          <p>Kata kunci dikirim ke Crossref saat kamu menekan tombol. Hasilnya sumber terbuka, bukan database kampus.</p>
+          <span class="tag">Hanya kata kunci</span>
+        </div>
+        <div class="step">
+          <span class="n">04</span>
+          <h3>Putuskan</h3>
+          <p>Kamu yang menilai. Skor tidak menggantikan pembacaan, dan kalimat tanpa tanda tetap perlu diperiksa.</p>
+          <span class="tag">Manusia tetap di atas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section limits" id="batas">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow"><i></i> 04 · Batasan</span>
+          <h2>Yang jujur tentang alat ini</h2>
+          <p>Deteksi AI bukan pengukuran pasti. Semakin keras alat mengklaim kepastian, semakin besar kemungkinan ia salah.</p>
+        </div>
+        <div class="section-note">Baca sebelum percaya</div>
+      </div>
+      <div class="limits-grid">
+        <div class="limit-card">
+          <h3>Yang bisa dilakukan</h3>
+          <p>Membantu melihat pola yang sering muncul, dan menunjukkan bagian yang perlu kamu baca ulang.</p>
+          <ul class="limit-list">
+            <li>Menandai frasa dan kata yang generik.</li>
+            <li>Mengukur variasi panjang kalimat dan pengulangan.</li>
+            <li>Mencari sumber terbuka yang memakai istilah serupa.</li>
+            <li>Membandingkan dua dokumen secara lokal.</li>
+          </ul>
+        </div>
+        <div class="limit-card dark">
+          <h3>Yang tidak bisa dilakukan</h3>
+          <p>Memberi vonis “ini AI” atau “ini manusia”. Tidak ada detektor yang bisa melakukannya dengan pasti.</p>
+          <ul class="limit-list">
+            <li>Membuktikan siapa penulis sebuah teks.</li>
+            <li>Memeriksa database karya kampus atau Turnitin.</li>
+            <li>Menangkap semua teks yang sudah diparafrase.</li>
+            <li>Menggantikan penilaian dosen atau editor.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer wrap">
+  <span><b>CekTulis</b> · alat bantu mahasiswa</span>
+  <span>Bukan pengganti Turnitin. Bukan vonis.</span>
+  <span class="right">
+    <a href="#cara">Cara kerja</a>
+    <a href="#batas">Batasan</a>
+    <a href="https://github.com/lanangworkk-bit/cektulis" target="_blank" rel="noopener">GitHub ↗</a>
+  </span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var MAX_CHARS = 50000;
+  var MAX_FILE = 10 * 1024 * 1024;
+
+  var state = {
+    fileText: '',
+    fileName: '',
+    fileSize: 0,
+    result: null
+  };
+  var simToken = 0;
+  var compareToken = 0;
+  var countTimer = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    draft: $('draft'),
+    count: $('count'),
+    tabPaste: $('tab-paste'),
+    tabUpload: $('tab-upload'),
+    panePaste: $('pane-paste'),
+    paneUpload: $('pane-upload'),
+    dropzone: $('dropzone'),
+    fileInput: $('file-input'),
+    fileRow: $('file-row'),
+    fileBadge: $('file-badge'),
+    fileName: $('file-name'),
+    fileMeta: $('file-meta'),
+    fileRemove: $('file-remove'),
+    analyze: $('analyze'),
+    sample: $('sample'),
+    clear: $('clear'),
+    checkerStatus: $('checker-status'),
+    report: $('hasil'),
+    reportMeta: $('report-meta'),
+    scoreRing: $('score-ring'),
+    scoreNum: $('score-num'),
+    bandBadge: $('band-badge'),
+    verdict: $('verdict'),
+    verdictSub: $('verdict-sub'),
+    confidence: $('confidence'),
+    statWords: $('stat-words'),
+    statSentences: $('stat-sentences'),
+    statParagraphs: $('stat-paragraphs'),
+    statRead: $('stat-read'),
+    signalCount: $('signal-count'),
+    signals: $('signals'),
+    heatmap: $('heatmap'),
+    sentDetail: $('sent-detail'),
+    simBtn: $('sim-btn'),
+    simStatus: $('sim-status'),
+    simList: $('sim-list'),
+    compareInput: $('compare-input'),
+    compareStatus: $('compare-status'),
+    compareList: $('compare-list'),
+    advice: $('advice'),
+    print: $('print')
+  };
+
+  /* ---------- daftar kata dan frasa ---------- */
+
+  var STOPWORDS = new Set((
+    'ada adalah akan aku anda antara apa apabila atas atau bagaimana bagi bahwa banyak baru beberapa bila bisa boleh bukan ' +
+    'dalam dan dapat dari dengan di dia dimana ini itu jadi jika juga karena ke kepada ketika kita lagi lain lebih mereka ' +
+    'kami namun oleh pada para pun saat saya sebagai sebab secara sedang setelah serta sejak seperti sudah supaya tadi tanpa ' +
+    'lalu kemudian memakai menggunakan membuat melakukan terdapat ' +
+    'telah tentang tetapi tidak untuk yang merupakan memiliki mempunyai menjadi berada dilakukan digunakan berdasarkan terhadap ' +
+    'melalui sehingga sedangkan maupun yaitu yakni sebagaimana sesuai seluruh setiap semua dua tiga satu pertama kedua ketiga ' +
+    'terakhir hal cara bagian secara masih harus perlu ingin akan telah ' +
+    'the and of to in a an is are was were be been being that this these those for on as with by from at or but not it its ' +
+    'their our we they he she you i has have had will would can could should may might must about into over after before ' +
+    'between during through under above than then so if because while where when which who whom whose what how all any both ' +
+    'each few more most other some such no nor only own same too very just also however therefore thus'
+  ).split(/\s+/));
+
+  var GENERIC_TERMS = new Set((
+    'penelitian studi analisis metode hasil data sistem proses penggunaan pengaruh hubungan tujuan masalah kajian artikel ' +
+    'jurnal buku teori konsep variabel responden sampel teknik instrumen uji nilai tingkat jumlah bagian bab tabel gambar ' +
+    'penulis pembahasan kesimpulan saran latar belakang tinjauan pustaka objek subjek sumber informasi teknologi pendidikan ' +
+    'pembelajaran mahasiswa dosen siswa sekolah kampus kelas materi model program kegiatan upaya peran fungsi manfaat dampak ' +
+    'faktor kondisi situasi lingkungan masyarakat orang waktu tahun hari baru lama besar kecil tinggi rendah baik buruk ' +
+    'penting utama umum khusus berbeda sama sesuai terkait tersebut berikut'
+  ).split(/\s+/));
+
+  var STRONG_PHRASES = [
+    'di era', 'pada akhirnya', 'bukti nyata', 'di sinilah', 'dalam ranah',
+    'menjembatani kesenjangan', 'membuka potensi', 'mengubah permainan', 'bawa ke level',
+    'belum pernah terjadi sebelumnya', 'tidak perlu dikatakan lagi', 'luar biasa',
+    'seiring dengan', 'pada intinya', 'di tengah'
+  ];
+
+  var WEAK_PHRASES = [
+    'selain itu', 'lebih lanjut', 'perlu dicatat', 'tidak hanya', 'bukan hanya',
+    'dengan demikian', 'oleh karena itu', 'secara keseluruhan', 'singkatnya',
+    'kesimpulannya', 'menariknya', 'mari kita', 'intinya adalah', 'tentu saja',
+    'pastinya', 'hal ini menunjukkan', 'dapat disimpulkan', 'sebagai kesimpulan'
+  ];
+
+  var BANNED_WORDS = [
+    'mendalami', 'menyelami', 'lanskap', 'krusial', 'kompleks', 'rumit', 'dinamis',
+    'komprehensif', 'memperkuat', 'meraih', 'menegaskan', 'multidimensi', 'bernuansa',
+    'memupuk', 'memanfaatkan', 'memfasilitasi', 'inovatif', 'mutakhir', 'transformatif',
+    'merevolusi', 'mulus', 'tangguh', 'menampilkan', 'menyoroti', 'menekankan',
+    'meningkatkan', 'menakjubkan', 'mendalam', 'sinergi', 'memelopori', 'menavigasi',
+    'menjembatani', 'memberdayakan', 'tapestri'
+  ];
+
+  var SAMPLE_TEXT = 'Di era digital saat ini, teknologi memainkan peran yang krusial dalam lanskap pendidikan. Selain itu, platform pembelajaran yang inovatif menampilkan pengalaman belajar yang mulus dan komprehensif. Lebih lanjut, dosen dituntut untuk mendalami metode pengajaran yang dinamis, sehingga mahasiswa dapat memanfaatkan teknologi secara optimal. Pada akhirnya, sinergi antara dosen dan mahasiswa menjadi bukti nyata dari transformasi pendidikan yang berkelanjutan.\n\nSaya mencatat tiga masalah di kelas metodologi penelitian. Mahasiswa kesulitan menemukan variabel yang bisa diukur. Dosen lalu meminta mereka membawa satu artikel jurnal dan menandai bagian metodologinya. Setelah dua pertemuan, sebagian besar sudah bisa menuliskan definisi operasional sendiri.';
+
+  /* ---------- pembantu umum ---------- */
+
+  function avg(arr) {
+    return arr.length ? arr.reduce(function (a, b) { return a + b; }, 0) / arr.length : 0;
+  }
+
+  function std(arr) {
+    if (!arr.length) return 0;
+    var m = avg(arr);
+    return Math.sqrt(avg(arr.map(function (x) { return Math.pow(x - m, 2); })));
+  }
+
+  function clamp(n, min, max) {
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function fmt(n) {
+    return new Intl.NumberFormat('id-ID').format(n);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function unique(arr) {
+    return Array.from(new Set(arr));
+  }
+
+  function normalizeText(text) {
+    return String(text || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function getParagraphs(text) {
+    return normalizeText(text)
+      .split(/\n\s*\n/)
+      .map(function (p) { return p.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim(); })
+      .filter(function (p) { return p.length > 0; });
+  }
+
+  function splitParagraph(p) {
+    var t = p
+      .replace(/https?:\/\/[^\s]+/g, function (m) { return m.replace(/\./g, '\u0001'); })
+      .replace(/(\d)\.(\d)/g, '$1\u0001$2')
+      .replace(/\b(Dr|Prof|Ir|Hj|H|No|Vol|Hlm|et al|e\.g|i\.e)\./gi, '$1\u0001');
+    var out = [];
+    var re = /[^.!?]+[.!?]+["'”’)\]]*/g;
+    var m;
+    var last = 0;
+    while ((m = re.exec(t)) !== null) {
+      out.push(m[0]);
+      last = re.lastIndex;
+    }
+    if (last < t.length) out.push(t.slice(last));
+    return out
+      .map(function (s) { return s.replace(/\u0001/g, '.').trim(); })
+      .filter(function (s) { return s.length >= 3 && /[A-Za-zÀ-ÿ]/.test(s); });
+  }
+
+  function getSentences(text) {
+    var out = [];
+    getParagraphs(text).forEach(function (p, pi) {
+      splitParagraph(p).forEach(function (s) {
+        out.push({ text: s, paragraph: pi });
+      });
+    });
+    return out;
+  }
+
+  function tokenize(s) {
+    return String(s || '').toLowerCase().match(/[a-zà-ÿ0-9]+(?:['’-][a-zà-ÿ0-9]+)*/g) || [];
+  }
+
+  function phraseMatches(text, phrases) {
+    var found = [];
+    phrases.forEach(function (p) {
+      var re = new RegExp('\\b' + escapeRe(p) + '\\b', 'gi');
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        found.push({ phrase: p, index: m.index, length: m[0].length });
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+    });
+    return found;
+  }
+
+  function contentWords(s) {
+    return tokenize(s).filter(function (w) {
+      return w.length >= 4 && !STOPWORDS.has(w);
+    });
+  }
+
+  function jaccard(a, b) {
+    var A = new Set(a);
+    var B = new Set(b);
+    if (!A.size || !B.size) return 0;
+    var inter = 0;
+    A.forEach(function (w) { if (B.has(w)) inter++; });
+    return inter / (A.size + B.size - inter);
+  }
+
+  /* ---------- analisis ---------- */
+
+  function analyzeSentences(sentences, meanLen, rhythmFlag) {
+    return sentences.map(function (s) {
+      var strong = phraseMatches(s.text, STRONG_PHRASES);
+      var weak = phraseMatches(s.text, WEAK_PHRASES);
+      var banned = phraseMatches(s.text, BANNED_WORDS);
+      var reasons = [];
+      var pts = 0;
+
+      if (strong.length) {
+        var strongList = unique(strong.map(function (x) { return x.phrase; }));
+        pts += strongList.length * 3;
+        reasons.push('Frasa khas AI: “' + strongList.join('”, “') + '”.');
+      }
+      if (weak.length) {
+        var weakList = unique(weak.map(function (x) { return x.phrase; }));
+        pts += weakList.length;
+        reasons.push('Pembuka atau frasa generik: “' + weakList.join('”, “') + '”.');
+      }
+      if (banned.length) {
+        var bannedList = unique(banned.map(function (x) { return x.phrase; }));
+        pts += Math.min(3, bannedList.length);
+        reasons.push('Kata abstrak: “' + bannedList.join('”, “') + '”.');
+      }
+      if (rhythmFlag && meanLen >= 12 && meanLen <= 30 && s.words >= meanLen - 2 && s.words <= meanLen + 2) {
+        pts += 1;
+        reasons.push('Panjangnya hampir sama dengan kalimat lain di sekitarnya.');
+      }
+
+      var risk = Math.min(100, Math.round(pts * 18));
+      var level = risk >= 50 ? 'high' : risk >= 25 ? 'mid' : 'low';
+      return {
+        text: s.text,
+        paragraph: s.paragraph,
+        words: s.words,
+        reasons: reasons,
+        risk: risk,
+        level: level
+      };
+    });
+  }
+
+  function computeSignals(text, sentences, paragraphs, metrics) {
+    var signals = [];
+    var n = sentences.length;
+    var cv = metrics.cv;
+
+    /* 1. variasi panjang kalimat */
+    var bStatus = 'neutral';
+    var bPoints = 0;
+    var bValue = '—';
+    var bDetail = 'Butuh minimal 5 kalimat untuk membaca ritme.';
+    if (n >= 5) {
+      bValue = 'CV ' + cv.toFixed(2).replace('.', ',');
+      if (cv >= 0.45) {
+        bStatus = 'low'; bPoints = 0;
+        bDetail = 'Panjang kalimat bervariasi. Ritmenya tidak seragam.';
+      } else if (cv >= 0.32) {
+        bStatus = 'mid'; bPoints = 8;
+        bDetail = 'Variasi sedang. Beberapa kalimat panjangnya berdekatan.';
+      } else if (cv >= 0.22) {
+        bStatus = 'high'; bPoints = 16;
+        bDetail = 'Banyak kalimat yang panjangnya hampir sama.';
+      } else {
+        bStatus = 'high'; bPoints = 24;
+        bDetail = 'Ritme sangat seragam. Ini sinyal yang paling mudah diukur.';
+      }
+    }
+    signals.push({
+      key: 'burstiness',
+      label: 'Variasi panjang kalimat',
+      value: bValue,
+      status: bStatus,
+      points: bPoints,
+      max: 24,
+      detail: bDetail
+    });
+
+    /* 2. frasa khas AI */
+    var strong = phraseMatches(text, STRONG_PHRASES);
+    var weak = phraseMatches(text, WEAK_PHRASES);
+    var phraseTotal = strong.length + weak.length;
+    var pPoints = Math.min(20, strong.length * 4 + weak.length * 1.5);
+    var pStatus = pPoints >= 12 ? 'high' : pPoints >= 5 ? 'mid' : 'low';
+    var pDetail = phraseTotal
+      ? 'Antara lain: ' + unique(strong.concat(weak).map(function (x) { return x.phrase; })).slice(0, 5).join(', ') + '.'
+      : 'Tidak ada frasa khas AI yang terdeteksi.';
+    signals.push({
+      key: 'phrases',
+      label: 'Frasa khas AI',
+      value: phraseTotal + ' temuan',
+      status: pStatus,
+      points: Math.round(pPoints * 10) / 10,
+      max: 20,
+      detail: pDetail
+    });
+
+    /* 3. kata abstrak */
+    var banned = phraseMatches(text, BANNED_WORDS);
+    var wPoints = Math.min(12, banned.length * 1.2);
+    var wStatus = wPoints >= 8 ? 'high' : wPoints >= 3 ? 'mid' : 'low';
+    var wDetail = banned.length
+      ? 'Antara lain: ' + unique(banned.map(function (x) { return x.phrase; })).slice(0, 6).join(', ') + '.'
+      : 'Tidak ada kata abstrak yang menonjol.';
+    signals.push({
+      key: 'banned',
+      label: 'Kata abstrak',
+      value: banned.length + ' kata',
+      status: wStatus,
+      points: Math.round(wPoints * 10) / 10,
+      max: 12,
+      detail: wDetail
+    });
+
+    /* 4. pembuka generik */
+    var openerCount = 0;
+    var openerExamples = [];
+    sentences.forEach(function (s) {
+      var low = s.text.toLowerCase();
+      var hit = STRONG_PHRASES.concat(WEAK_PHRASES).find(function (p) { return low.indexOf(p) === 0; });
+      if (hit) {
+        openerCount++;
+        openerExamples.push(hit);
+      }
+    });
+    var oPoints = Math.min(8, openerCount * 2);
+    var oStatus = oPoints >= 5 ? 'high' : oPoints >= 2 ? 'mid' : 'low';
+    signals.push({
+      key: 'openers',
+      label: 'Pembuka generik',
+      value: openerCount + ' kalimat',
+      status: oStatus,
+      points: oPoints,
+      max: 8,
+      detail: openerCount
+        ? 'Contoh: ' + unique(openerExamples).slice(0, 4).join(', ') + '.'
+        : 'Tidak banyak kalimat yang dibuka dengan frasa generik.'
+    });
+
+    /* 5. pola tiga serangkai */
+    var triples = text.match(/[^,.;!?\n]+,\s*[^,.;!?\n]+,\s*(?:dan|serta)\s+[^,.;!?\n]+/g) || [];
+    var tPoints = triples.length >= 2 ? Math.min(8, triples.length * 2) : 0;
+    var tStatus = tPoints >= 5 ? 'high' : tPoints >= 2 ? 'mid' : 'low';
+    signals.push({
+      key: 'triples',
+      label: 'Pola tiga serangkai',
+      value: triples.length + ' pola',
+      status: tStatus,
+      points: tPoints,
+      max: 8,
+      detail: triples.length
+        ? 'Ada ' + triples.length + ' deret tiga item. Periksa apakah isinya memang tiga, bukan dipaksa tiga.'
+        : 'Tidak ada deret tiga item yang menonjol.'
+    });
+
+    /* 6. panjang paragraf */
+    var paraStatus = 'neutral';
+    var paraPoints = 0;
+    var paraValue = '—';
+    var paraDetail = 'Butuh minimal 4 paragraf untuk membaca variasi.';
+    if (paragraphs.length >= 4) {
+      var plens = paragraphs.map(function (p) { return tokenize(p).length; });
+      var pm = avg(plens);
+      var pcv = pm ? std(plens) / pm : 0;
+      paraValue = 'CV ' + pcv.toFixed(2).replace('.', ',');
+      if (pcv < 0.24) {
+        paraStatus = 'high'; paraPoints = 6;
+        paraDetail = 'Panjang paragraf hampir sama. Coba buat satu paragraf lebih pendek.';
+      } else if (pcv < 0.36) {
+        paraStatus = 'mid'; paraPoints = 3;
+        paraDetail = 'Variasi paragraf sedang. Beberapa paragraf terasa setara.';
+      } else {
+        paraStatus = 'low'; paraPoints = 0;
+        paraDetail = 'Panjang paragraf bervariasi.';
+      }
+    }
+    signals.push({
+      key: 'paragraphs',
+      label: 'Panjang paragraf',
+      value: paraValue,
+      status: paraStatus,
+      points: paraPoints,
+      max: 6,
+      detail: paraDetail
+    });
+
+    /* 7. em dash */
+    var emDashes = (text.match(/—/g) || []).length;
+    var dPoints = Math.min(6, emDashes * 2);
+    var dStatus = dPoints >= 4 ? 'high' : dPoints >= 2 ? 'mid' : 'low';
+    signals.push({
+      key: 'dashes',
+      label: 'Em dash',
+      value: emDashes + ' tanda',
+      status: dStatus,
+      points: dPoints,
+      max: 6,
+      detail: emDashes
+        ? 'Em dash bisa dipakai, tetapi sering muncul pada teks AI. Ganti sebagian dengan titik atau koma.'
+        : 'Tidak ada em dash. Aman.'
+    });
+
+    /* 8. pengulangan awal kalimat */
+    var starters = sentences.map(function (s) {
+      return tokenize(s.text).slice(0, 2).join(' ');
+    }).filter(Boolean);
+    var freq = {};
+    starters.forEach(function (s) { freq[s] = (freq[s] || 0) + 1; });
+    var topStarter = '';
+    var maxRepeat = 0;
+    Object.keys(freq).forEach(function (k) {
+      if (freq[k] > maxRepeat) {
+        maxRepeat = freq[k];
+        topStarter = k;
+      }
+    });
+    var rPoints = maxRepeat >= 3 ? Math.min(8, (maxRepeat - 2) * 3) : 0;
+    var rStatus = rPoints >= 5 ? 'high' : rPoints >= 2 ? 'mid' : 'low';
+    signals.push({
+      key: 'repetition',
+      label: 'Pengulangan awal kalimat',
+      value: maxRepeat + '×',
+      status: rStatus,
+      points: rPoints,
+      max: 8,
+      detail: maxRepeat >= 3
+        ? 'Pembuka yang paling sering: “' + topStarter + '” (' + maxRepeat + ' kali).'
+        : 'Tidak ada pembuka yang berulang menonjol.'
+    });
+
+    /* 9. keragaman kata (informasi, bukan sinyal kuat) */
+    var allWords = tokenize(text);
+    var content = allWords.filter(function (w) { return w.length >= 3 && !STOPWORDS.has(w); });
+    var guiraud = content.length ? new Set(content).size / Math.sqrt(content.length) : 0;
+    signals.push({
+      key: 'diversity',
+      label: 'Keragaman kata',
+      value: content.length ? 'Guiraud ' + guiraud.toFixed(1).replace('.', ',') : '—',
+      status: 'neutral',
+      points: 0,
+      max: 0,
+      detail: 'Keragaman kata. Angka rendah bisa wajar pada teks pendek; ini bukan sinyal kuat.'
+    });
+
+    return signals;
+  }
+
+  function bandFor(score) {
+    if (score >= 75) {
+      return {
+        label: 'Sangat tinggi',
+        key: 'high',
+        verdict: 'Pola AI sangat kentara.',
+        sub: 'Anggap ini daftar tempat yang perlu ditulis ulang, bukan vonis. Fokus pada kalimat dengan alasan terbanyak.'
+      };
+    }
+    if (score >= 55) {
+      return {
+        label: 'Tinggi',
+        key: 'high',
+        verdict: 'Banyak pola yang menonjol.',
+        sub: 'Mulai dari kalimat bertanda merah. Ganti frasa generik dengan kalimat yang membawa informasi.'
+      };
+    }
+    if (score >= 25) {
+      return {
+        label: 'Sedang',
+        key: 'mid',
+        verdict: 'Beberapa pola perlu dibongkar.',
+        sub: 'Tidak perlu menulis ulang semuanya. Mulai dari sinyal dengan poin terbesar.'
+      };
+    }
+    return {
+      label: 'Rendah',
+      key: 'low',
+      verdict: 'Ritmenya masih wajar.',
+      sub: 'Tidak banyak pola yang menonjol. Baca ulang sekali lagi untuk memastikan istilah teknisnya tepat.'
+    };
+  }
+
+  function confidenceFor(stats, sentences) {
+    var conf;
+    if (stats.words < 80) {
+      conf = 'Teks pendek. Skor belum stabil; gunakan sebagai indikasi awal.';
+    } else if (stats.words < 200) {
+      conf = 'Indikasi awal. Pembacaan manusia tetap diperlukan.';
+    } else {
+      conf = 'Indikasi lebih stabil, tetapi tetap bukan bukti.';
+    }
+    if (sentences.length < 5) {
+      conf += ' Butuh minimal 5 kalimat untuk membaca ritme.';
+    }
+    return conf;
+  }
+
+  function buildAdvice(signals, band) {
+    var get = function (k) {
+      return signals.find(function (s) { return s.key === k; }) || { points: 0 };
+    };
+    var advice = [];
+
+    if (band.key === 'high') {
+      advice.push('Tulis ulang satu paragraf penuh dengan kata sendiri. Mengganti kata satu per satu sering menyisakan ritme yang sama.');
+    }
+    if (get('burstiness').points >= 8) {
+      advice.push('Campur kalimat pendek dan panjang. Pecah satu kalimat panjang menjadi dua, lalu pertahankan satu kalimat pendek di dekatnya.');
+    }
+    if (get('phrases').points >= 5) {
+      advice.push('Ganti frasa seperti “di era”, “selain itu”, atau “pada akhirnya” dengan transisi yang membawa informasi. Kalau bisa dihapus tanpa mengubah isi, hapus.');
+    }
+    if (get('banned').points >= 3) {
+      advice.push('Ganti kata abstrak (“krusial”, “komprehensif”, “sinergi”) dengan hal yang konkret: siapa, apa, berapa, atau di mana.');
+    }
+    if (get('openers').points >= 2) {
+      advice.push('Mulai kalimat langsung dari isinya. Pembuka yang bisa dihapus tanpa kehilangan makna biasanya tidak perlu.');
+    }
+    if (get('triples').points >= 2) {
+      advice.push('Periksa deret tiga item. Kalau isinya memang tiga, pertahankan; kalau tidak, ubah menjadi dua atau empat.');
+    }
+    if (get('paragraphs').points >= 3) {
+      advice.push('Buat satu paragraf lebih pendek dan satu lebih panjang. Paragraf yang panjangnya rata terasa seperti templat.');
+    }
+    if (get('repetition').points >= 2) {
+      advice.push('Variasikan cara membuka kalimat. Pengulangan “Hal ini” atau “Selain itu” membuat ritmenya mudah ditebak.');
+    }
+    if (!advice.length) {
+      advice.push('Tidak ada sinyal besar. Baca ulang dengan suara keras; perbaiki kalimat yang terasa terlalu rapi atau terlalu umum.');
+    }
+    advice.push('Jangan menambah data, kutipan, atau angka yang tidak ada hanya agar skor turun. Skor bukan tujuan.');
+
+    return advice.slice(0, 5);
+  }
+
+  function analyzeText(text) {
+    var clean = normalizeText(text);
+    var blocks = getParagraphs(clean);
+    /* Blok pendek sering berasal dari sel tabel atau judul, bukan paragraf prosa.
+       Hitung paragraf dari blok yang cukup panjang agar statistiknya tidak meledak. */
+    var prose = blocks.filter(function (p) { return tokenize(p).length >= 8; });
+    var paragraphs = prose.length ? prose : blocks;
+    var sentences = getSentences(clean);
+    sentences.forEach(function (s) { s.words = tokenize(s.text).length; });
+
+    var lens = sentences.map(function (s) { return s.words; }).filter(function (n) { return n > 0; });
+    var mean = lens.length ? avg(lens) : 0;
+    var sd = lens.length ? std(lens) : 0;
+    var cv = mean ? sd / mean : 0;
+    var rhythmFlag = sentences.length >= 5 && cv < 0.32;
+
+    sentences = analyzeSentences(sentences, mean, rhythmFlag);
+    var signals = computeSignals(clean, sentences, paragraphs, { mean: mean, sd: sd, cv: cv, lens: lens });
+
+    var raw = signals.reduce(function (a, s) { return a + s.points; }, 0);
+    var maxPoints = signals.reduce(function (a, s) { return a + s.max; }, 0);
+    var score = maxPoints ? Math.round(clamp(raw / maxPoints * 100, 0, 100)) : 0;
+    var band = bandFor(score);
+    var words = tokenize(clean).length;
+    var stats = {
+      words: words,
+      sentences: sentences.length,
+      paragraphs: paragraphs.length,
+      chars: clean.length,
+      read: words ? Math.max(1, Math.round(words / 200)) : 0
+    };
+
+    return {
+      text: clean,
+      sentences: sentences,
+      signals: signals,
+      score: score,
+      band: band,
+      stats: stats,
+      confidence: confidenceFor(stats, sentences),
+      advice: buildAdvice(signals, band)
+    };
+  }
+
+  /* ---------- tampilan ---------- */
+
+  function animateNumber(el, target) {
+    var start = parseInt(el.textContent, 10) || 0;
+    var t0 = performance.now();
+    var duration = 480;
+    function frame(t) {
+      var p = Math.min(1, (t - t0) / duration);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(start + (target - start) * eased);
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function setCheckerStatus(msg, type) {
+    els.checkerStatus.textContent = msg;
+    els.checkerStatus.className = 'checker-status' + (msg ? ' show' : '') + (type ? ' ' + type : '');
+  }
+
+  function setSimStatus(msg, type) {
+    els.simStatus.textContent = msg;
+    els.simStatus.className = 'sim-status' + (type ? ' ' + type : '');
+  }
+
+  function setCompareStatus(msg, type) {
+    els.compareStatus.textContent = msg;
+    els.compareStatus.className = 'sim-status' + (type ? ' ' + type : '');
+  }
+
+  function updateCount() {
+    var text = normalizeText(els.draft.value);
+    var words = tokenize(text).length;
+    var sents = text ? getSentences(text).length : 0;
+    els.count.textContent = fmt(words) + ' kata · ' + fmt(sents) + ' kalimat';
+  }
+
+  function renderReport(result, source) {
+    state.result = result;
+    simToken++;
+    compareToken++;
+
+    els.reportMeta.textContent = source + ' · ' + fmt(result.stats.words) + ' kata · ' +
+      fmt(result.stats.sentences) + ' kalimat · diperiksa lokal';
+
+    var ringColor = result.band.key === 'low' ? '#2f6b45' : result.band.key === 'mid' ? '#a86412' : '#a33a2f';
+    els.scoreRing.style.setProperty('--p', result.score);
+    els.scoreRing.style.setProperty('--ring', ringColor);
+    animateNumber(els.scoreNum, result.score);
+
+    els.bandBadge.className = 'badge ' + result.band.key;
+    els.bandBadge.textContent = result.band.label;
+    els.verdict.textContent = result.band.verdict;
+    els.verdictSub.textContent = result.band.sub;
+    els.confidence.textContent = result.confidence;
+
+    els.statWords.textContent = fmt(result.stats.words);
+    els.statSentences.textContent = fmt(result.stats.sentences);
+    els.statParagraphs.textContent = fmt(result.stats.paragraphs);
+    els.statRead.textContent = fmt(result.stats.read);
+
+    renderSignals(result.signals);
+    renderHeatmap(result);
+    renderAdvice(result.advice);
+
+    els.simList.innerHTML = '';
+    setSimStatus('', '');
+    els.simBtn.disabled = false;
+    els.compareList.innerHTML = '';
+    setCompareStatus('', '');
+    els.compareInput.value = '';
+
+    els.report.classList.remove('hidden');
+    requestAnimationFrame(function () {
+      els.report.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  function renderSignals(signals) {
+    var active = signals.filter(function (s) { return s.points > 0; }).length;
+    els.signalCount.textContent = active + ' sinyal';
+
+    els.signals.innerHTML = signals.map(function (s) {
+      var pct = s.max ? Math.round(s.points / s.max * 100) : 0;
+      return '<div class="signal">' +
+        '<div class="signal-top">' +
+          '<span class="dot ' + s.status + '"></span>' +
+          '<b>' + escapeHtml(s.label) + '</b>' +
+          '<span class="signal-value">' + escapeHtml(s.value) + '</span>' +
+        '</div>' +
+        '<p>' + escapeHtml(s.detail) + '</p>' +
+        '<div class="meter"><i class="' + s.status + '" style="width:' + pct + '%"></i></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderHeatmap(result) {
+    if (!result.sentences.length) {
+      els.heatmap.innerHTML = '<p class="sim-empty">Tidak ada kalimat yang bisa ditandai.</p>';
+      els.sentDetail.classList.add('hidden');
+      return;
+    }
+    els.heatmap.innerHTML = result.sentences.map(function (s, i) {
+      var label = s.level === 'high' ? 'tinggi' : s.level === 'mid' ? 'sedang' : 'rendah';
+      return '<span class="sent risk-' + s.level + '" data-i="' + i + '" role="button" tabindex="' + (i === 0 ? '0' : '-1') + '" ' +
+        'aria-label="Kalimat ' + (i + 1) + ', risiko ' + label + '">' + escapeHtml(s.text) + '</span>';
+    }).join(' ');
+    els.sentDetail.classList.add('hidden');
+  }
+
+  function showSentenceDetail(i) {
+    if (!state.result || !state.result.sentences[i]) return;
+    var s = state.result.sentences[i];
+    var label = s.level === 'high' ? 'Tinggi' : s.level === 'mid' ? 'Sedang' : 'Rendah';
+    var reasons = s.reasons.length ? s.reasons : ['Tidak ada pola khusus. Kalimat ini tetap perlu dibaca.'];
+    var tip = s.level === 'high'
+      ? 'Tulis ulang kalimat ini dengan kata sendiri. Sebutkan hal yang konkret, bukan sifat umum.'
+      : s.level === 'mid'
+        ? 'Periksa apakah ada frasa yang bisa dihapus tanpa mengubah isi. Kalau ada, hapus.'
+        : 'Tidak ada tanda khusus. Lewati kalau isinya sudah jelas.';
+
+    els.heatmap.querySelectorAll('.sent.active').forEach(function (el) {
+      el.classList.remove('active');
+    });
+    var active = els.heatmap.querySelector('.sent[data-i="' + i + '"]');
+    if (active) active.classList.add('active');
+
+    els.sentDetail.innerHTML =
+      '<div class="sent-detail-top">' +
+        '<span class="badge ' + s.level + '">Risiko ' + label + '</span>' +
+        '<span class="chip">' + s.words + ' kata</span>' +
+        '<button class="icon-btn" type="button" data-close aria-label="Tutup detail">×</button>' +
+      '</div>' +
+      '<p class="sent-quote">“' + escapeHtml(s.text) + '”</p>' +
+      '<ul>' + reasons.map(function (r) { return '<li>' + escapeHtml(r) + '</li>'; }).join('') + '</ul>' +
+      '<p class="sent-tip">' + escapeHtml(tip) + '</p>';
+    els.sentDetail.classList.remove('hidden');
+  }
+
+  function renderAdvice(advice) {
+    els.advice.innerHTML = advice.map(function (a) {
+      return '<li>' + escapeHtml(a) + '</li>';
+    }).join('');
+  }
+
+  /* ---------- pembaca file ---------- */
+
+  var PDF_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+  function fileExt(name) {
+    var m = /\.([a-z0-9]+)$/i.exec(String(name || ''));
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  function readFileAsArrayBuffer(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error('File tidak bisa dibaca.')); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(new Error('File tidak bisa dibaca.')); };
+      reader.readAsText(file);
+    });
+  }
+
+  function cleanExtracted(text) {
+    return String(text || '')
+      .replace(/\u0000/g, '')
+      .replace(/[\u200b-\u200d\ufeff]/g, '')
+      .replace(/\r\n?/g, '\n')
+      .trim();
+  }
+
+  async function parseFile(file) {
+    var ext = fileExt(file.name);
+
+    if (ext === 'docx') {
+      if (typeof mammoth === 'undefined') {
+        throw new Error('Pembaca DOCX gagal dimuat. Periksa koneksi, lalu muat ulang halaman.');
+      }
+      var docxBuf = await readFileAsArrayBuffer(file);
+      var out = await mammoth.extractRawText({ arrayBuffer: docxBuf });
+      return cleanExtracted(out.value);
+    }
+
+    if (ext === 'doc') {
+      throw new Error('Format .doc lama belum didukung. Simpan ulang sebagai .docx atau PDF.');
+    }
+
+    if (ext === 'pdf') {
+      if (typeof pdfjsLib === 'undefined') {
+        throw new Error('Pembaca PDF gagal dimuat. Periksa koneksi, lalu muat ulang halaman.');
+      }
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+      var pdfBuf = await readFileAsArrayBuffer(file);
+      var pdf = await pdfjsLib.getDocument({ data: new Uint8Array(pdfBuf) }).promise;
+      var pages = [];
+      for (var i = 1; i <= pdf.numPages; i++) {
+        var page = await pdf.getPage(i);
+        var content = await page.getTextContent();
+        var lines = [];
+        var line = '';
+        content.items.forEach(function (item) {
+          if (typeof item.str !== 'string') return;
+          line += item.str;
+          if (item.hasEOL) {
+            if (line.trim()) lines.push(line.trim());
+            line = '';
+          }
+        });
+        if (line.trim()) lines.push(line.trim());
+        var pageText = '';
+        lines.forEach(function (l) {
+          if (!pageText) {
+            pageText = l;
+          } else if (/[-\u2010\u2011]$/.test(pageText)) {
+            pageText = pageText.slice(0, -1) + l;
+          } else {
+            pageText += ' ' + l;
+          }
+        });
+        pages.push(pageText);
+      }
+      return cleanExtracted(pages.join('\n\n')).replace(/\u00ad/g, '');
+    }
+
+    if (ext === 'txt' || ext === 'md' || ext === 'markdown' || ext === 'text') {
+      return cleanExtracted(await readFileAsText(file));
+    }
+
+    throw new Error('Format file belum didukung. Gunakan DOCX, PDF, TXT, atau MD.');
+  }
+
+  function sizeLabel(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+  }
+
+  async function handleSelectedFile(file) {
+    if (!file) return;
+    els.fileInput.value = '';
+    var ext = fileExt(file.name);
+
+    if (file.size > MAX_FILE) {
+      setCheckerStatus('File terlalu besar (' + sizeLabel(file.size) + '). Maksimal 10 MB.', 'error');
+      return;
+    }
+    if (['docx', 'pdf', 'txt', 'md', 'markdown', 'text'].indexOf(ext) === -1) {
+      setCheckerStatus('Format .' + (ext || '?') + ' belum didukung. Gunakan DOCX, PDF, TXT, atau MD.', 'error');
+      return;
+    }
+
+    setCheckerStatus('Membaca ' + file.name + '…', '');
+    els.fileRow.classList.add('hidden');
+
+    try {
+      var text = normalizeText(await parseFile(file));
+      if (!text) {
+        throw new Error('Tidak ada teks yang bisa dibaca. File mungkin berisi hasil pindai (scan) atau gambar.');
+      }
+
+      var truncated = text.length > MAX_CHARS;
+      if (truncated) text = text.slice(0, MAX_CHARS);
+
+      state.fileText = text;
+      state.fileName = file.name;
+      state.fileSize = file.size;
+
+      els.draft.value = text;
+      els.fileRow.classList.remove('hidden');
+      els.fileBadge.textContent = ext.slice(0, 4).toUpperCase();
+      els.fileName.textContent = file.name;
+      els.fileMeta.textContent = sizeLabel(file.size) + ' · ' + fmt(tokenize(text).length) + ' kata';
+      activateTab('paste');
+      updateCount();
+
+      setCheckerStatus(
+        'File terbaca: ' + fmt(tokenize(text).length) + ' kata. Teks dimuat ke tab Tempel; periksa sebelum menekan "Periksa tulisan".' +
+        (truncated ? ' Teks dipotong pada 50.000 karakter.' : ''),
+        'ok'
+      );
+    } catch (err) {
+      state.fileText = '';
+      state.fileName = '';
+      state.fileSize = 0;
+      els.fileRow.classList.add('hidden');
+      setCheckerStatus('Gagal membaca file: ' + err.message, 'error');
+    }
+  }
+
+  /* ---------- kemiripan literatur (Crossref) ---------- */
+
+  function stripMarkup(s) {
+    return String(s || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function extractKeywords(text) {
+    var words = tokenize(text).filter(function (w) {
+      return w.length >= 4 && !STOPWORDS.has(w) && !/^\d+$/.test(w);
+    });
+    if (!words.length) return [];
+
+    var preferred = words.filter(function (w) { return !GENERIC_TERMS.has(w); });
+    var pool = preferred.length >= 4 ? preferred : words;
+
+    var freq = {};
+    var first = {};
+    pool.forEach(function (w, i) {
+      freq[w] = (freq[w] || 0) + 1;
+      if (first[w] === undefined) first[w] = i;
+    });
+
+    return Object.keys(freq)
+      .sort(function (a, b) {
+        if (freq[b] !== freq[a]) return freq[b] - freq[a];
+        if (b.length !== a.length) return b.length - a.length;
+        return first[a] - first[b];
+      })
+      .slice(0, 8);
+  }
+
+  function formatAuthors(authors) {
+    if (!Array.isArray(authors) || !authors.length) return 'Tanpa penulis';
+    var names = authors.slice(0, 3).map(function (a) {
+      if (a.family) return [a.given, a.family].filter(Boolean).join(' ');
+      return a.name || '';
+    }).filter(Boolean);
+    if (!names.length) return 'Tanpa penulis';
+    return names.join(', ') + (authors.length > 3 ? ' dkk.' : '');
+  }
+
+  function yearOf(work) {
+    var parts = work && work.issued && work.issued['date-parts'];
+    return parts && parts[0] && parts[0][0] ? String(parts[0][0]) : 'tanpa tahun';
+  }
+
+  function containerOf(work) {
+    var c = work && work['container-title'];
+    return Array.isArray(c) && c.length ? stripMarkup(c[0]) : '';
+  }
+
+  function renderSimResults(items, keywords) {
+    var userSet = new Set(contentWords(state.result.text));
+    var scored = items.map(function (work) {
+      var title = stripMarkup(Array.isArray(work.title) ? work.title[0] : work.title) || 'Tanpa judul';
+      var abstract = stripMarkup(work.abstract);
+      var workSet = new Set(contentWords(title + ' ' + abstract + ' ' + containerOf(work)));
+      var matches = 0;
+      userSet.forEach(function (w) { if (workSet.has(w)) matches++; });
+      var denom = Math.sqrt(userSet.size * workSet.size);
+      var score = denom ? Math.round(matches / denom * 100) : 0;
+      return {
+        title: title,
+        authors: formatAuthors(work.author),
+        year: yearOf(work),
+        container: containerOf(work),
+        doi: work.DOI || '',
+        url: work.URL || (work.DOI ? 'https://doi.org/' + work.DOI : ''),
+        score: score,
+        matches: matches
+      };
+    }).filter(function (w) { return w.score > 0; });
+
+    scored.sort(function (a, b) { return b.score - a.score; });
+    var top = scored.slice(0, 6);
+
+    if (!top.length) {
+      els.simList.innerHTML = '';
+      setSimStatus(
+        'Crossref mengembalikan ' + items.length + ' hasil, tetapi tidak ada yang berbagi kata isi yang cukup dengan teksmu. ' +
+        'Coba ganti istilah kunci atau periksa sumber secara manual.',
+        ''
+      );
+      return;
+    }
+
+    els.simList.innerHTML = top.map(function (w) {
+      var link = w.url
+        ? '<a href="' + escapeHtml(w.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(w.title) + '</a>'
+        : escapeHtml(w.title);
+      var meta = [w.authors, w.year, w.container].filter(Boolean).join(' · ');
+      return '<div class="sim-item">' +
+        '<div>' +
+          '<h4>' + link + '</h4>' +
+          '<div class="sim-meta">' + escapeHtml(meta) + ' · ' + fmt(w.matches) + ' kata cocok</div>' +
+        '</div>' +
+        '<div class="sim-side">' +
+          '<span class="sim-pct">' + w.score + '%</span>' +
+          '<span class="sim-label">kemiripan</span>' +
+        '</div>' +
+        '<div class="sim-bar"><i style="width:' + Math.min(100, w.score) + '%"></i></div>' +
+      '</div>';
+    }).join('');
+
+    setSimStatus(
+      'Kata kunci yang dikirim: ' + keywords.join(', ') + '. ' +
+      'Diurutkan dari kemiripan kata, bukan dari relevansi akademik. Buka sumber aslinya sebelum menyimpulkan.',
+      ''
+    );
+  }
+
+  async function checkSimilarity() {
+    if (!state.result) {
+      setSimStatus('Periksa tulisan dulu sebelum mencari literatur.', 'error');
+      return;
+    }
+    var keywords = extractKeywords(state.result.text);
+    if (keywords.length < 2) {
+      setSimStatus('Kata kunci belum cukup. Teks perlu lebih panjang agar pencarian bermakna.', 'error');
+      return;
+    }
+
+    var token = ++simToken;
+    els.simBtn.disabled = true;
+    els.simList.innerHTML = '';
+    setSimStatus('Mengirim ' + keywords.length + ' kata kunci ke Crossref: ' + keywords.join(', ') + '…', 'loading');
+
+    var url = 'https://api.crossref.org/works?query.bibliographic=' +
+      encodeURIComponent(keywords.join(' ')) +
+      '&rows=12&select=DOI,title,author,issued,abstract,URL,container-title';
+
+    try {
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = controller ? setTimeout(function () { controller.abort(); }, 20000) : null;
+      var res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller ? controller.signal : undefined
+      });
+      if (timer) clearTimeout(timer);
+      if (token !== simToken) return;
+      if (!res.ok) throw new Error('Crossref membalas HTTP ' + res.status + '.');
+
+      var data = await res.json();
+      if (token !== simToken) return;
+      var items = data && data.message && data.message.items;
+      if (!Array.isArray(items) || !items.length) {
+        setSimStatus('Crossref tidak menemukan hasil untuk kata kunci ini. Coba lagi nanti.', '');
+        return;
+      }
+      renderSimResults(items, keywords);
+    } catch (err) {
+      if (token !== simToken) return;
+      var msg = err && err.name === 'AbortError'
+        ? 'Pencarian melewati batas 20 detik.'
+        : (err && err.message ? err.message : 'Jaringan bermasalah.');
+      setSimStatus('Pencarian gagal: ' + msg + ' Periksa koneksi lalu coba lagi.', 'error');
+    } finally {
+      if (token === simToken) els.simBtn.disabled = false;
+    }
+  }
+
+  /* ---------- bandingkan dokumen lokal ---------- */
+
+  function tfidfCosine(tokensA, tokensB) {
+    if (!tokensA.length || !tokensB.length) return 0;
+    var docs = [tokensA, tokensB];
+    var df = Object.create(null);
+    docs.forEach(function (tokens) {
+      new Set(tokens).forEach(function (w) { df[w] = (df[w] || 0) + 1; });
+    });
+
+    var vectors = docs.map(function (tokens) {
+      var tf = Object.create(null);
+      tokens.forEach(function (w) { tf[w] = (tf[w] || 0) + 1; });
+      var vec = Object.create(null);
+      Object.keys(tf).forEach(function (w) {
+        var idf = Math.log(3 / (df[w] + 1)) + 1;
+        vec[w] = (tf[w] / tokens.length) * idf;
+      });
+      return vec;
+    });
+
+    var dot = 0;
+    var normA = 0;
+    var normB = 0;
+    Object.keys(vectors[0]).forEach(function (w) {
+      var a = vectors[0][w];
+      normA += a * a;
+      if (vectors[1][w]) dot += a * vectors[1][w];
+    });
+    Object.keys(vectors[1]).forEach(function (w) {
+      normB += vectors[1][w] * vectors[1][w];
+    });
+    return normA && normB ? dot / Math.sqrt(normA * normB) : 0;
+  }
+
+  function sentencePairs(sentencesA, sentencesB) {
+    var candidates = [];
+    var max = 300;
+    sentencesA.slice(0, max).forEach(function (a, i) {
+      sentencesB.slice(0, max).forEach(function (b, j) {
+        var score = jaccard(a.words, b.words);
+        if (score >= 0.3) candidates.push({ i: i, j: j, score: score });
+      });
+    });
+    candidates.sort(function (x, y) { return y.score - x.score; });
+
+    var usedA = Object.create(null);
+    var usedB = Object.create(null);
+    var pairs = [];
+    candidates.forEach(function (c) {
+      if (usedA[c.i] || usedB[c.j]) return;
+      usedA[c.i] = true;
+      usedB[c.j] = true;
+      pairs.push(c);
+    });
+    pairs.sort(function (x, y) { return x.i - y.i; });
+    return pairs;
+  }
+
+  function shortSentence(s, max) {
+    var t = String(s || '').replace(/\s+/g, ' ').trim();
+    return t.length > max ? t.slice(0, max - 1).trim() + '…' : t;
+  }
+
+  function renderComparison(textA, textB, nameB) {
+    var aWords = contentWords(textA);
+    var bWords = contentWords(textB);
+    if (aWords.length < 10 || bWords.length < 10) {
+      els.compareList.innerHTML = '';
+      setCompareStatus('Teks pembanding terlalu pendek untuk dibandingkan secara bermakna.', 'error');
+      return;
+    }
+
+    var cosine = Math.round(tfidfCosine(aWords, bWords) * 100);
+    var aSentences = getSentences(textA).map(function (s) {
+      return { text: s.text, words: contentWords(s.text) };
+    }).filter(function (s) { return s.words.length >= 3; });
+    var bSentences = getSentences(textB).map(function (s) {
+      return { text: s.text, words: contentWords(s.text) };
+    }).filter(function (s) { return s.words.length >= 3; });
+
+    var pairs = sentencePairs(aSentences, bSentences);
+    var base = Math.max(1, Math.min(aSentences.length, bSentences.length));
+    var pairPct = Math.round(pairs.length / base * 100);
+
+    var html = '<div class="compare-summary">' +
+      '<b>' + cosine + '%</b>' +
+      '<span>kemiripan TF-IDF dengan ' + escapeHtml(nameB) + '</span>' +
+      '</div>' +
+      '<p class="sim-note">' + pairs.length + ' dari ' + base + ' kalimat berpasangan (' + pairPct + '%). ' +
+      'Perhitungan memakai kata isi, bukan makna. Parafrase yang mengganti semua kata tidak akan tertangkap.</p>';
+
+    if (pairs.length) {
+      html += pairs.slice(0, 8).map(function (p) {
+        return '<div class="pair">' +
+          '<p><b>A</b>' + escapeHtml(shortSentence(aSentences[p.i].text, 230)) + '</p>' +
+          '<p><b>B</b>' + escapeHtml(shortSentence(bSentences[p.j].text, 230)) +
+            ' <span class="pair-score">' + Math.round(p.score * 100) + '%</span></p>' +
+          '</div>';
+      }).join('');
+    } else {
+      html += '<p class="sim-empty">Tidak ada pasangan kalimat yang cukup mirip. Kemiripan kata tetap dihitung dari seluruh dokumen.</p>';
+    }
+
+    els.compareList.innerHTML = html;
+    setCompareStatus('Selesai. Kedua dokumen dibandingkan di browser dan tidak dikirim ke mana pun.', '');
+  }
+
+  async function handleCompareFile(file) {
+    if (!file) return;
+    els.compareInput.value = '';
+    if (!state.result) {
+      setCompareStatus('Periksa tulisan utama dulu sebelum membandingkan.', 'error');
+      return;
+    }
+    if (file.size > MAX_FILE) {
+      setCompareStatus('File pembanding terlalu besar. Maksimal 10 MB.', 'error');
+      return;
+    }
+
+    var token = ++compareToken;
+    setCompareStatus('Membaca ' + file.name + '…', 'loading');
+    els.compareList.innerHTML = '';
+
+    try {
+      var text = normalizeText(await parseFile(file));
+      if (token !== compareToken) return;
+      if (!text) throw new Error('Tidak ada teks yang bisa dibaca dari file pembanding.');
+      renderComparison(state.result.text, text, file.name);
+    } catch (err) {
+      if (token !== compareToken) return;
+      setCompareStatus('Gagal membandingkan: ' + err.message, 'error');
+    } finally {
+      if (token === compareToken) els.compareInput.value = '';
+    }
+  }
+
+  /* ---------- interaksi ---------- */
+
+  function activateTab(which) {
+    var isUpload = which === 'upload';
+    els.tabPaste.classList.toggle('active', !isUpload);
+    els.tabUpload.classList.toggle('active', isUpload);
+    els.tabPaste.setAttribute('aria-selected', String(!isUpload));
+    els.tabUpload.setAttribute('aria-selected', String(isUpload));
+    els.tabPaste.tabIndex = isUpload ? -1 : 0;
+    els.tabUpload.tabIndex = isUpload ? 0 : -1;
+    els.panePaste.classList.toggle('hidden', isUpload);
+    els.paneUpload.classList.toggle('hidden', !isUpload);
+  }
+
+  function runAnalysis() {
+    var text = normalizeText(els.draft.value);
+    var wordCount = tokenize(text).length;
+
+    if (wordCount < 40) {
+      setCheckerStatus('Teks baru ' + wordCount + ' kata. Tambahkan lagi sampai minimal 40 kata agar sinyalnya terbaca.', 'error');
+      els.draft.focus();
+      return;
+    }
+    if (text.length > MAX_CHARS) {
+      setCheckerStatus('Teks ' + fmt(text.length) + ' karakter, melebihi batas 50.000. Potong dulu sebelum memeriksa.', 'error');
+      return;
+    }
+
+    var source;
+    if (state.fileName) {
+      source = text === state.fileText ? 'File: ' + state.fileName : 'Diedit dari: ' + state.fileName;
+    } else {
+      source = 'Teks tempelan';
+    }
+
+    var result = analyzeText(text);
+    renderReport(result, source);
+    setCheckerStatus('', '');
+  }
+
+  function resetAll() {
+    simToken++;
+    compareToken++;
+    state.fileText = '';
+    state.fileName = '';
+    state.fileSize = 0;
+    state.result = null;
+
+    els.draft.value = '';
+    els.fileRow.classList.add('hidden');
+    els.fileInput.value = '';
+    els.compareInput.value = '';
+    els.compareList.innerHTML = '';
+    setCompareStatus('', '');
+    els.simList.innerHTML = '';
+    setSimStatus('', '');
+    els.simBtn.disabled = false;
+    els.report.classList.add('hidden');
+    els.sentDetail.classList.add('hidden');
+    els.sentDetail.innerHTML = '';
+    setCheckerStatus('', '');
+    updateCount();
+  }
+
+  els.tabPaste.addEventListener('click', function () { activateTab('paste'); });
+  els.tabUpload.addEventListener('click', function () { activateTab('upload'); });
+
+  [els.tabPaste, els.tabUpload].forEach(function (tab) {
+    tab.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      var next = tab === els.tabPaste ? els.tabUpload : els.tabPaste;
+      activateTab(next === els.tabUpload ? 'upload' : 'paste');
+      next.focus();
+    });
+  });
+
+  els.dropzone.addEventListener('click', function (e) {
+    if (e.target === els.fileInput) return;
+    els.fileInput.click();
+  });
+  els.dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      els.fileInput.click();
+    }
+  });
+  els.fileInput.addEventListener('change', function () {
+    handleSelectedFile(els.fileInput.files && els.fileInput.files[0]);
+  });
+
+  ['dragenter', 'dragover'].forEach(function (type) {
+    els.dropzone.addEventListener(type, function (e) {
+      e.preventDefault();
+      els.dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(function (type) {
+    els.dropzone.addEventListener(type, function () {
+      els.dropzone.classList.remove('drag');
+    });
+  });
+  els.dropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    els.dropzone.classList.remove('drag');
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    handleSelectedFile(file);
+  });
+
+  els.fileRemove.addEventListener('click', function () {
+    state.fileText = '';
+    state.fileName = '';
+    state.fileSize = 0;
+    els.fileRow.classList.add('hidden');
+    els.fileInput.value = '';
+    setCheckerStatus('File dilepas. Teks yang sudah diekstrak tetap ada di tab Tempel.', '');
+    activateTab('paste');
+  });
+
+  els.analyze.addEventListener('click', runAnalysis);
+
+  els.sample.addEventListener('click', function () {
+    simToken++;
+    compareToken++;
+    state.fileText = '';
+    state.fileName = '';
+    state.fileSize = 0;
+    els.draft.value = SAMPLE_TEXT;
+    els.fileRow.classList.add('hidden');
+    els.fileInput.value = '';
+    activateTab('paste');
+    updateCount();
+    setCheckerStatus('Contoh dimuat. Sesuaikan atau langsung periksa.', 'ok');
+    runAnalysis();
+  });
+
+  els.clear.addEventListener('click', resetAll);
+
+  els.print.addEventListener('click', function () { window.print(); });
+
+  els.simBtn.addEventListener('click', checkSimilarity);
+
+  els.compareInput.addEventListener('change', function () {
+    var file = els.compareInput.files && els.compareInput.files[0];
+    handleCompareFile(file);
+  });
+
+  els.heatmap.addEventListener('click', function (e) {
+    var target = e.target.closest ? e.target.closest('.sent') : null;
+    if (!target) return;
+    els.heatmap.querySelectorAll('.sent').forEach(function (el) { el.tabIndex = -1; });
+    target.tabIndex = 0;
+    showSentenceDetail(parseInt(target.getAttribute('data-i'), 10));
+  });
+  els.heatmap.addEventListener('keydown', function (e) {
+    var target = e.target.closest ? e.target.closest('.sent') : null;
+    if (!target) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showSentenceDetail(parseInt(target.getAttribute('data-i'), 10));
+      return;
+    }
+
+    var keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+    if (keys.indexOf(e.key) === -1) return;
+    e.preventDefault();
+
+    var all = Array.prototype.slice.call(els.heatmap.querySelectorAll('.sent'));
+    var i = all.indexOf(target);
+    if (i === -1) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') i = Math.min(all.length - 1, i + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') i = Math.max(0, i - 1);
+    if (e.key === 'Home') i = 0;
+    if (e.key === 'End') i = all.length - 1;
+
+    all.forEach(function (el) { el.tabIndex = -1; });
+    all[i].tabIndex = 0;
+    all[i].focus();
+  });
+
+  els.sentDetail.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-close]')) {
+      els.sentDetail.classList.add('hidden');
+    }
+  });
+
+  els.draft.addEventListener('input', function () {
+    clearTimeout(countTimer);
+    countTimer = setTimeout(updateCount, 120);
+  });
+
+  els.draft.addEventListener('paste', function () {
+    setTimeout(updateCount, 30);
+  });
+
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+  }
+
+  updateCount();
+})();
+</script>
+</body>
+</html>
