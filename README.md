@@ -12,6 +12,8 @@ Alat bantu mahasiswa untuk memeriksa draf tulisan sebelum dikumpulkan: menandai 
 - **Sembilan sinyal gaya tulisan.** Variasi panjang kalimat, frasa khas AI, kata abstrak, pembuka generik, pola tiga serangkai, panjang paragraf, em dash, pengulangan awal kalimat, dan keragaman kata.
 - **Peta kalimat.** Kalimat bertanda bisa diklik untuk melihat alasan di balik tandanya.
 - **Kemiripan literatur.** Kata kunci dikirim ke [Crossref](https://www.crossref.org/) hanya saat tombol ditekan. Hasilnya sumber terbuka, bukan database kampus.
+- **Pencarian manual.** Kalau Crossref gagal atau tidak ada hasil, kata kunci yang sama ditautkan ke Crossref, Semantic Scholar, dan Google Scholar.
+- **Skor transparan.** Bobot tiap sinyal ditampilkan di laporan; skor adalah jumlah poin dibagi 92, bukan keluaran model bahasa.
 - **Perbandingan lokal.** Unggah file pembanding; kemiripan TF-IDF dan pasangan kalimat dihitung di browser.
 - **Ekspor PDF.** Tombol cetak memakai dialog cetak browser dan menyembunyikan bagian yang tidak perlu.
 

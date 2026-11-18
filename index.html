@@ -237,6 +237,9 @@
   .sim-bar{grid-column:1/-1;height:3px;border-radius:99px;background:var(--paper-2);overflow:hidden;margin-top:-4px}
   .sim-bar i{display:block;height:100%;border-radius:99px;background:var(--teal)}
   .sim-empty{padding:14px 0 2px;font-size:11.5px;line-height:1.6;color:var(--muted)}
+  .sim-empty p{margin:0 0 6px}
+  .sim-empty p:last-child{margin-bottom:0}
+  .sim-empty a{color:var(--teal);text-underline-offset:2px}
   .sim-note{font-size:10px;line-height:1.5;color:var(--muted-2);margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
 
   /* compare */
@@ -257,6 +260,19 @@
   .advice-card li:first-child{border-top:0;padding-top:0}
   .advice-card li::before{content:counter(advice,decimal-leading-zero);font:700 9px/1.7 var(--mono);color:var(--teal);flex:0 0 auto;min-width:20px}
   .report-note{font-size:10.5px;line-height:1.6;color:var(--muted-2);margin:16px 0 0;padding:0 4px}
+
+  /* method */
+  .method-card{margin-top:14px;padding:0;overflow:hidden}
+  .method-card summary{cursor:pointer;list-style:none;padding:18px clamp(20px,3vw,28px);font-family:var(--serif);font-size:18px;line-height:1.2;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .method-card summary::-webkit-details-marker{display:none}
+  .method-card summary::after{content:"+";font:600 20px/1 var(--sans);color:var(--teal)}
+  .method-card[open] summary::after{content:"–"}
+  .method-card summary:focus-visible{outline:3px solid rgba(15,92,78,.22);outline-offset:-3px}
+  .method-body{padding:0 clamp(20px,3vw,28px) 22px;border-top:1px solid var(--line)}
+  .method-body p{font-size:11.5px;line-height:1.65;color:var(--muted);margin:14px 0 0}
+  .method-body ul{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
+  .method-body li{display:flex;justify-content:space-between;gap:12px;font-size:11px;line-height:1.5;color:var(--muted);border-bottom:1px dotted var(--line);padding-bottom:5px}
+  .method-body li b{font:700 10px/1.5 var(--mono);color:var(--ink)}
 
   /* how */
   .how-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -332,12 +348,13 @@
     .preview-body h3{font-size:16px}
     .footer .right{margin-left:0;width:100%}
     .sent-detail{padding:14px}
+    .method-body ul{grid-template-columns:1fr}
   }
 
   @media print{
     @page{margin:16mm}
     body{background:#fff;font-size:11pt;color:#000}
-    .topbar,.hero,.checker-section,.how,.limits,.footer,.report-head .btn,.sim-card .btn,.compare-card,.report-note,.sent-detail{display:none!important}
+    .topbar,.hero,.checker-section,.how,.limits,.footer,.report-head .btn,.sim-card .btn,.compare-card,.report-note,.sent-detail,.method-card{display:none!important}
     .wrap{width:100%;max-width:none;padding:0}
     .section{padding:0}
     .report-section{padding:0}
@@ -529,6 +546,25 @@
         </div>
         <div class="signals-grid" id="signals"></div>
       </div>
+
+      <details class="card method-card">
+        <summary>Cara skor 0–100 dihitung</summary>
+        <div class="method-body">
+          <p>Skor adalah jumlah poin sinyal dibagi total poin maksimum (92), lalu dikali 100. Tidak ada model bahasa yang dilatih; semua aturan di halaman ini bisa diperiksa.</p>
+          <ul>
+            <li><span>Variasi panjang kalimat</span><b>24</b></li>
+            <li><span>Frasa khas AI</span><b>20</b></li>
+            <li><span>Kata abstrak</span><b>12</b></li>
+            <li><span>Pembuka generik</span><b>8</b></li>
+            <li><span>Pola tiga serangkai</span><b>8</b></li>
+            <li><span>Panjang paragraf</span><b>6</b></li>
+            <li><span>Em dash</span><b>6</b></li>
+            <li><span>Pengulangan awal kalimat</span><b>8</b></li>
+            <li><span>Keragaman kata</span><b>0 · informasi</b></li>
+          </ul>
+          <p>Batas: &lt;25 rendah · 25–54 sedang · 55–74 tinggi · ≥75 sangat tinggi. Di bawah 200 kata, hasilnya ditandai sebagai indikasi awal. Skor bukan probabilitas AI.</p>
+        </div>
+      </details>
 
       <div class="card heatmap-card">
         <div class="card-head">
@@ -1455,6 +1491,47 @@
       .trim();
   }
 
+  function pdfLinesToParagraphs(lines) {
+    var paragraphs = [];
+    var current = '';
+    var prev = null;
+    var pendingBreak = false;
+
+    lines.forEach(function (line) {
+      var text = line.text.replace(/\s+/g, ' ').trim();
+      if (!text) {
+        if (current) pendingBreak = true;
+        return;
+      }
+
+      var breakPara = pendingBreak;
+      pendingBreak = false;
+
+      if (prev) {
+        var gap = prev.y - line.y;
+        var ref = Math.max(prev.h, line.h, 8);
+        if (gap > ref * 1.45) breakPara = true;
+      }
+
+      if (breakPara && current) {
+        paragraphs.push(current);
+        current = '';
+      }
+
+      if (!current) {
+        current = text;
+      } else if (/[-\u2010\u2011]$/.test(current)) {
+        current = current.slice(0, -1) + text;
+      } else {
+        current += ' ' + text;
+      }
+      prev = line;
+    });
+
+    if (current) paragraphs.push(current);
+    return paragraphs.join('\n\n');
+  }
+
   async function parseFile(file) {
     var ext = fileExt(file.name);
 
@@ -1484,26 +1561,30 @@
         var content = await page.getTextContent();
         var lines = [];
         var line = '';
+        var lineY = null;
+        var lineH = 10;
+
         content.items.forEach(function (item) {
           if (typeof item.str !== 'string') return;
+          if (lineY === null) {
+            lineY = item.transform ? item.transform[5] : 0;
+            lineH = Math.abs(item.height || (item.transform && item.transform[3]) || 10) || 10;
+          } else {
+            lineH = Math.max(lineH, Math.abs(item.height || 0));
+          }
           line += item.str;
           if (item.hasEOL) {
-            if (line.trim()) lines.push(line.trim());
+            lines.push({ text: line, y: lineY === null ? 0 : lineY, h: lineH });
             line = '';
+            lineY = null;
+            lineH = 10;
           }
         });
-        if (line.trim()) lines.push(line.trim());
-        var pageText = '';
-        lines.forEach(function (l) {
-          if (!pageText) {
-            pageText = l;
-          } else if (/[-\u2010\u2011]$/.test(pageText)) {
-            pageText = pageText.slice(0, -1) + l;
-          } else {
-            pageText += ' ' + l;
-          }
-        });
-        pages.push(pageText);
+        if (line.trim() || lineY !== null) {
+          lines.push({ text: line, y: lineY === null ? 0 : lineY, h: lineH });
+        }
+
+        pages.push(pdfLinesToParagraphs(lines));
       }
       return cleanExtracted(pages.join('\n\n')).replace(/\u00ad/g, '');
     }
@@ -1633,6 +1714,18 @@
     return Array.isArray(c) && c.length ? stripMarkup(c[0]) : '';
   }
 
+  function searchLinksHtml(keywords) {
+    var q = encodeURIComponent(keywords.join(' '));
+    return '<div class="sim-empty">' +
+      '<p><b>Cari manual:</b> ' +
+        '<a href="https://search.crossref.org/?q=' + q + '" target="_blank" rel="noopener noreferrer">Crossref</a> · ' +
+        '<a href="https://www.semanticscholar.org/search?q=' + q + '&sort=relevance" target="_blank" rel="noopener noreferrer">Semantic Scholar</a> · ' +
+        '<a href="https://scholar.google.com/scholar?q=' + q + '" target="_blank" rel="noopener noreferrer">Google Scholar</a>' +
+      '</p>' +
+      '<p>Kata kunci: ' + escapeHtml(keywords.join(', ')) + '.</p>' +
+    '</div>';
+  }
+
   function renderSimResults(items, keywords) {
     var userSet = new Set(contentWords(state.result.text));
     var scored = items.map(function (work) {
@@ -1659,10 +1752,10 @@
     var top = scored.slice(0, 6);
 
     if (!top.length) {
-      els.simList.innerHTML = '';
+      els.simList.innerHTML = searchLinksHtml(keywords);
       setSimStatus(
         'Crossref mengembalikan ' + items.length + ' hasil, tetapi tidak ada yang berbagi kata isi yang cukup dengan teksmu. ' +
-        'Coba ganti istilah kunci atau periksa sumber secara manual.',
+        'Coba ganti istilah kunci atau cari manual lewat tautan di bawah.',
         ''
       );
       return;
@@ -1728,7 +1821,8 @@
       if (token !== simToken) return;
       var items = data && data.message && data.message.items;
       if (!Array.isArray(items) || !items.length) {
-        setSimStatus('Crossref tidak menemukan hasil untuk kata kunci ini. Coba lagi nanti.', '');
+        els.simList.innerHTML = searchLinksHtml(keywords);
+        setSimStatus('Crossref tidak menemukan hasil untuk kata kunci ini. Coba cari manual lewat tautan di bawah.', '');
         return;
       }
       renderSimResults(items, keywords);
@@ -1737,7 +1831,8 @@
       var msg = err && err.name === 'AbortError'
         ? 'Pencarian melewati batas 20 detik.'
         : (err && err.message ? err.message : 'Jaringan bermasalah.');
-      setSimStatus('Pencarian gagal: ' + msg + ' Periksa koneksi lalu coba lagi.', 'error');
+      els.simList.innerHTML = searchLinksHtml(keywords);
+      setSimStatus('Pencarian gagal: ' + msg + ' Cari manual lewat tautan di bawah, atau coba lagi.', 'error');
     } finally {
       if (token === simToken) els.simBtn.disabled = false;
     }
