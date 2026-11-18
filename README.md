@@ -15,6 +15,7 @@ Alat bantu mahasiswa untuk memeriksa draf tulisan sebelum dikumpulkan: menandai 
 - **Pencarian manual.** Kalau Crossref gagal atau tidak ada hasil, kata kunci yang sama ditautkan ke Crossref, Semantic Scholar, dan Google Scholar.
 - **Skor transparan.** Bobot tiap sinyal ditampilkan di laporan; skor adalah jumlah poin dibagi 92, bukan keluaran model bahasa.
 - **Perbandingan lokal.** Unggah file pembanding; kemiripan TF-IDF dan pasangan kalimat dihitung di browser.
+- **Ringkasan Markdown.** Salin atau unduh laporan berisi skor, sinyal, kalimat bertanda, hasil Crossref, dan perbandingan dokumen. Semua dibuat di browser.
 - **Ekspor PDF.** Tombol cetak memakai dialog cetak browser dan menyembunyikan bagian yang tidak perlu.
 
 ## Yang tidak bisa dilakukan

@@ -120,6 +120,7 @@
   .btn.ghost:hover{color:var(--ink);background:var(--paper-2)}
   .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .btn.small{height:34px;padding:0 13px;font-size:11px}
+  .report-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
   .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:18px;line-height:1;color:var(--muted)}
   .icon-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-soft)}
 
@@ -314,6 +315,7 @@
   @media (max-width:760px){
     .wrap{width:calc(100% - 32px)}
     .section-head{grid-template-columns:minmax(0,1fr)}
+    .report-actions{justify-content:flex-start}
     .section-note{display:none;text-align:left}
     .signals-grid{grid-template-columns:1fr}
     .limits-grid{grid-template-columns:1fr}
@@ -510,10 +512,15 @@
           <h2>Hasil pemeriksaan</h2>
           <p id="report-meta">—</p>
         </div>
-        <button class="btn" id="print" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Ekspor PDF
-        </button>
+        <div class="report-actions">
+          <button class="btn ghost small" id="copy-report" type="button">Salin ringkasan</button>
+          <button class="btn ghost small" id="download-report" type="button">Unduh .md</button>
+          <button class="btn small" id="print" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Ekspor PDF
+          </button>
+          <span class="sr-only" id="export-status" role="status" aria-live="polite"></span>
+        </div>
       </div>
 
       <div class="report-top">
@@ -722,7 +729,15 @@
     fileText: '',
     fileName: '',
     fileSize: 0,
-    result: null
+    result: null,
+    reportSource: '',
+    simState: 'idle',
+    simResults: null,
+    simKeywords: [],
+    simNote: '',
+    compareState: 'idle',
+    compare: null,
+    compareNote: ''
   };
   var simToken = 0;
   var compareToken = 0;
@@ -770,7 +785,10 @@
     compareStatus: $('compare-status'),
     compareList: $('compare-list'),
     advice: $('advice'),
-    print: $('print')
+    print: $('print'),
+    copyReport: $('copy-report'),
+    downloadReport: $('download-report'),
+    exportStatus: $('export-status')
   };
 
   /* ---------- daftar kata dan frasa ---------- */
@@ -1350,6 +1368,15 @@
 
   function renderReport(result, source) {
     state.result = result;
+    state.reportSource = source;
+    state.simState = 'idle';
+    state.simResults = null;
+    state.simKeywords = [];
+    state.simNote = '';
+    state.compareState = 'idle';
+    state.compare = null;
+    state.compareNote = '';
+    if (els.exportStatus) els.exportStatus.textContent = '';
     simToken++;
     compareToken++;
 
@@ -1454,6 +1481,184 @@
     els.advice.innerHTML = advice.map(function (a) {
       return '<li>' + escapeHtml(a) + '</li>';
     }).join('');
+  }
+
+  /* ---------- ringkasan yang bisa disalin atau diunduh ---------- */
+
+  function markdownReport() {
+    if (!state.result) return '';
+    var r = state.result;
+    var now = new Date();
+    var when = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
+      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    var lines = [];
+
+    lines.push('# CekTulis — Ringkasan pemeriksaan');
+    lines.push('');
+    lines.push('- Sumber: ' + (state.reportSource || 'Teks'));
+    lines.push('- Dibuat: ' + when);
+    lines.push('- Teks: ' + fmt(r.stats.words) + ' kata · ' + fmt(r.stats.sentences) + ' kalimat · ' + fmt(r.stats.paragraphs) + ' paragraf');
+    lines.push('');
+    lines.push('## Skor');
+    lines.push('');
+    lines.push('**' + r.score + '/100 — ' + r.band.label + '**');
+    lines.push('');
+    lines.push(r.band.verdict + ' ' + r.band.sub);
+    lines.push('');
+    lines.push('## Sinyal');
+    lines.push('');
+    r.signals.forEach(function (s) {
+      var amount = s.max ? s.points + '/' + s.max : 'informasi';
+      var value = s.value && s.value !== '—' ? ' · ' + s.value : '';
+      lines.push('- **' + s.label + '** ' + amount + value + ' — ' + s.detail);
+    });
+    lines.push('');
+    lines.push('## Kalimat bertanda');
+    lines.push('');
+    var flagged = r.sentences.filter(function (s) { return s.level !== 'low'; })
+      .sort(function (a, b) { return b.risk - a.risk; })
+      .slice(0, 8);
+    if (!flagged.length) {
+      lines.push('Tidak ada kalimat bertanda. Tetap baca ulang teksnya.');
+    } else {
+      flagged.forEach(function (s) {
+        var label = s.level === 'high' ? 'tinggi' : 'sedang';
+        lines.push('- **Risiko ' + label + ' (' + s.risk + ')** — “' + s.text + '”');
+        if (s.reasons.length) lines.push('  - ' + s.reasons.join(' '));
+      });
+    }
+    lines.push('');
+    lines.push('## Kemiripan literatur');
+    lines.push('');
+    var manualSearch = function () {
+      if (!state.simKeywords.length) return;
+      var q = encodeURIComponent(state.simKeywords.join(' '));
+      lines.push('Cari manual: [Crossref](https://search.crossref.org/?q=' + q + ') · ' +
+        '[Semantic Scholar](https://www.semanticscholar.org/search?q=' + q + '&sort=relevance) · ' +
+        '[Google Scholar](https://scholar.google.com/scholar?q=' + q + ')');
+    };
+    if (state.simState === 'done' && state.simResults && state.simResults.length) {
+      lines.push('Kata kunci: ' + state.simKeywords.join(', ') + '.');
+      lines.push('');
+      state.simResults.forEach(function (w) {
+        var meta = [w.authors, w.year, w.container].filter(Boolean).join(' · ');
+        lines.push('- **' + w.score + '%** — ' + w.title + '. ' + meta + '. ' + fmt(w.matches) + ' kata cocok.' + (w.url ? ' <' + w.url + '>' : ''));
+      });
+    } else if (state.simState === 'loading') {
+      lines.push('Pencarian masih berjalan saat laporan dibuat.');
+    } else if (state.simState === 'empty') {
+      lines.push('Tidak ada hasil yang berbagi kata isi. Kata kunci: ' + state.simKeywords.join(', ') + '.');
+      lines.push('');
+      manualSearch();
+    } else if (state.simState === 'error') {
+      var note = state.simNote || 'Pencarian gagal.';
+      if (!/[.!?]$/.test(note)) note += '.';
+      lines.push(note + (state.simKeywords.length ? ' Kata kunci: ' + state.simKeywords.join(', ') + '.' : ''));
+      lines.push('');
+      manualSearch();
+    } else {
+      lines.push('Belum dijalankan.');
+    }
+    lines.push('');
+    lines.push('## Perbandingan dokumen');
+    lines.push('');
+    if (state.compareState === 'done' && state.compare) {
+      var c = state.compare;
+      lines.push('- **' + c.cosine + '%** kemiripan TF-IDF dengan ' + c.name + '.');
+      lines.push('- ' + c.pairs + ' dari ' + c.base + ' kalimat berpasangan (' + c.pairPct + '%).');
+      if (c.samples.length) {
+        lines.push('');
+        c.samples.forEach(function (p) {
+          lines.push('> A: ' + p.a);
+          lines.push('>');
+          lines.push('> B: ' + p.b + ' (' + p.score + '%)');
+          lines.push('');
+        });
+      }
+    } else if (state.compareState === 'loading') {
+      lines.push('Perbandingan masih berjalan saat laporan dibuat.');
+    } else if (state.compareState === 'error') {
+      lines.push(state.compareNote || 'Perbandingan gagal.');
+    } else {
+      lines.push('Belum dijalankan.');
+    }
+    lines.push('');
+    lines.push('## Catatan');
+    lines.push('');
+    lines.push('Skor ini adalah indikasi berbasis heuristik, bukan probabilitas AI dan bukan bukti authorship. Buka sumber aslinya sebelum menyimpulkan.');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  function flashButton(btn, label) {
+    if (!btn) return;
+    if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent.trim();
+    clearTimeout(btn._labelTimer);
+    btn.textContent = label;
+    btn._labelTimer = setTimeout(function () {
+      btn.textContent = btn.dataset.originalLabel;
+    }, 1800);
+  }
+
+  function announceExport(msg) {
+    if (els.exportStatus) els.exportStatus.textContent = msg;
+  }
+
+  function fallbackCopy(text, done, fail) {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    document.body.appendChild(area);
+    area.select();
+    try {
+      document.execCommand('copy') ? done() : fail();
+    } catch (err) {
+      fail();
+    } finally {
+      document.body.removeChild(area);
+    }
+  }
+
+  function copyReportSummary() {
+    var text = markdownReport();
+    if (!text) return;
+    var done = function () {
+      flashButton(els.copyReport, 'Tersalin');
+      announceExport('Ringkasan disalin ke papan klip.');
+    };
+    var fail = function () {
+      flashButton(els.copyReport, 'Gagal menyalin');
+      announceExport('Gagal menyalin. Coba unduh sebagai .md.');
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {
+        fallbackCopy(text, done, fail);
+      });
+    } else {
+      fallbackCopy(text, done, fail);
+    }
+  }
+
+  function downloadReport() {
+    var text = markdownReport();
+    if (!text) return;
+    var now = new Date();
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    var blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'cektulis-ringkasan-' + stamp + '.md';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    flashButton(els.downloadReport, 'Terunduh');
+    announceExport('Laporan Markdown diunduh.');
   }
 
   /* ---------- pembaca file ---------- */
@@ -1658,13 +1863,13 @@
 
   function stripMarkup(s) {
     return String(s || '')
-      .replace(/<[^>]+>/g, ' ')
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&nbsp;/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -1749,9 +1954,23 @@
     }).filter(function (w) { return w.score > 0; });
 
     scored.sort(function (a, b) { return b.score - a.score; });
+
+    /* Crossref kadang memuat catatan ganda untuk artikel yang sama. */
+    var seen = Object.create(null);
+    scored = scored.filter(function (w) {
+      var key = w.title.toLowerCase().replace(/\s+/g, ' ').trim() + '|' + w.year;
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+
     var top = scored.slice(0, 6);
 
     if (!top.length) {
+      state.simState = 'empty';
+      state.simResults = [];
+      state.simKeywords = keywords;
+      state.simNote = 'Tidak ada hasil yang berbagi kata isi.';
       els.simList.innerHTML = searchLinksHtml(keywords);
       setSimStatus(
         'Crossref mengembalikan ' + items.length + ' hasil, tetapi tidak ada yang berbagi kata isi yang cukup dengan teksmu. ' +
@@ -1760,6 +1979,11 @@
       );
       return;
     }
+
+    state.simState = 'done';
+    state.simResults = top;
+    state.simKeywords = keywords;
+    state.simNote = '';
 
     els.simList.innerHTML = top.map(function (w) {
       var link = w.url
@@ -1793,6 +2017,10 @@
     }
     var keywords = extractKeywords(state.result.text);
     if (keywords.length < 2) {
+      state.simState = 'error';
+      state.simResults = null;
+      state.simKeywords = keywords;
+      state.simNote = 'Kata kunci belum cukup untuk mencari literatur.';
       setSimStatus('Kata kunci belum cukup. Teks perlu lebih panjang agar pencarian bermakna.', 'error');
       return;
     }
@@ -1800,6 +2028,10 @@
     var token = ++simToken;
     els.simBtn.disabled = true;
     els.simList.innerHTML = '';
+    state.simState = 'loading';
+    state.simResults = null;
+    state.simKeywords = keywords;
+    state.simNote = '';
     setSimStatus('Mengirim ' + keywords.length + ' kata kunci ke Crossref: ' + keywords.join(', ') + '…', 'loading');
 
     var url = 'https://api.crossref.org/works?query.bibliographic=' +
@@ -1821,6 +2053,10 @@
       if (token !== simToken) return;
       var items = data && data.message && data.message.items;
       if (!Array.isArray(items) || !items.length) {
+        state.simState = 'empty';
+        state.simResults = [];
+        state.simKeywords = keywords;
+        state.simNote = 'Crossref tidak menemukan hasil.';
         els.simList.innerHTML = searchLinksHtml(keywords);
         setSimStatus('Crossref tidak menemukan hasil untuk kata kunci ini. Coba cari manual lewat tautan di bawah.', '');
         return;
@@ -1831,6 +2067,10 @@
       var msg = err && err.name === 'AbortError'
         ? 'Pencarian melewati batas 20 detik.'
         : (err && err.message ? err.message : 'Jaringan bermasalah.');
+      state.simState = 'error';
+      state.simResults = null;
+      state.simKeywords = keywords;
+      state.simNote = 'Pencarian gagal: ' + msg;
       els.simList.innerHTML = searchLinksHtml(keywords);
       setSimStatus('Pencarian gagal: ' + msg + ' Cari manual lewat tautan di bawah, atau coba lagi.', 'error');
     } finally {
@@ -1906,6 +2146,9 @@
     var aWords = contentWords(textA);
     var bWords = contentWords(textB);
     if (aWords.length < 10 || bWords.length < 10) {
+      state.compareState = 'error';
+      state.compare = null;
+      state.compareNote = 'Teks pembanding terlalu pendek untuk dibandingkan secara bermakna.';
       els.compareList.innerHTML = '';
       setCompareStatus('Teks pembanding terlalu pendek untuk dibandingkan secara bermakna.', 'error');
       return;
@@ -1922,6 +2165,23 @@
     var pairs = sentencePairs(aSentences, bSentences);
     var base = Math.max(1, Math.min(aSentences.length, bSentences.length));
     var pairPct = Math.round(pairs.length / base * 100);
+
+    state.compareState = 'done';
+    state.compare = {
+      name: nameB,
+      cosine: cosine,
+      pairs: pairs.length,
+      base: base,
+      pairPct: pairPct,
+      samples: pairs.slice(0, 3).map(function (p) {
+        return {
+          a: shortSentence(aSentences[p.i].text, 180),
+          b: shortSentence(bSentences[p.j].text, 180),
+          score: Math.round(p.score * 100)
+        };
+      })
+    };
+    state.compareNote = '';
 
     var html = '<div class="compare-summary">' +
       '<b>' + cosine + '%</b>' +
@@ -1954,11 +2214,17 @@
       return;
     }
     if (file.size > MAX_FILE) {
+      state.compareState = 'error';
+      state.compare = null;
+      state.compareNote = 'File pembanding terlalu besar. Maksimal 10 MB.';
       setCompareStatus('File pembanding terlalu besar. Maksimal 10 MB.', 'error');
       return;
     }
 
     var token = ++compareToken;
+    state.compareState = 'loading';
+    state.compare = null;
+    state.compareNote = '';
     setCompareStatus('Membaca ' + file.name + '…', 'loading');
     els.compareList.innerHTML = '';
 
@@ -1969,6 +2235,9 @@
       renderComparison(state.result.text, text, file.name);
     } catch (err) {
       if (token !== compareToken) return;
+      state.compareState = 'error';
+      state.compare = null;
+      state.compareNote = 'Gagal membandingkan: ' + err.message;
       setCompareStatus('Gagal membandingkan: ' + err.message, 'error');
     } finally {
       if (token === compareToken) els.compareInput.value = '';
@@ -2022,6 +2291,15 @@
     state.fileName = '';
     state.fileSize = 0;
     state.result = null;
+    state.reportSource = '';
+    state.simState = 'idle';
+    state.simResults = null;
+    state.simKeywords = [];
+    state.simNote = '';
+    state.compareState = 'idle';
+    state.compare = null;
+    state.compareNote = '';
+    if (els.exportStatus) els.exportStatus.textContent = '';
 
     els.draft.value = '';
     els.fileRow.classList.add('hidden');
@@ -2114,6 +2392,8 @@
   els.clear.addEventListener('click', resetAll);
 
   els.print.addEventListener('click', function () { window.print(); });
+  els.copyReport.addEventListener('click', copyReportSummary);
+  els.downloadReport.addEventListener('click', downloadReport);
 
   els.simBtn.addEventListener('click', checkSimilarity);
 
